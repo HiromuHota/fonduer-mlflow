@@ -4,3 +4,5 @@ name: wiki
 entry_points:
   main:
     command: "ipython president_place_of_birth_tutorial.py"
+  test:
+    command: "python test.py"

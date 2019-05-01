@@ -714,22 +714,3 @@ get_ipython().run_line_magic('time', 'disc_model.train((train_cands[0], F_train[
 
 
 disc_model.save(model_file="best_model.pt", save_dir="./")
-# ### Evaluating on the Test Set
-# In this final section, we'll get the score we've been after: the performance of the extraction model on the blind test set (split 2). First, we load the test set labels and gold candidates from earlier:
-
-# In[34]:
-
-
-import numpy as np
-from wiki_table_utils import entity_level_f1
-
-
-# Now, we score using the discriminitive model:
-
-# In[35]:
-
-
-test_score = disc_model.predict((test_cands[0], F_test[0]), b=0.6, pos_label=TRUE)
-true_pred = [test_cands[0][_] for _ in np.nditer(np.where(test_score == TRUE))]
-get_ipython().run_line_magic('time', '(TP, FP, FN) = entity_level_f1(true_pred, gold_file, test_docs)')
-
