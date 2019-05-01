@@ -3,7 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - ipython
-  - spacy-model-en_core_web_sm
   - pip:
+    - torch==1.0.1.post2
     - fonduer==0.6.2
     - matplotlib
