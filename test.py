@@ -1,14 +1,13 @@
-from fonduer.learning import LogisticRegression
-
-from fonduer.candidates import CandidateExtractor
-from fonduer.candidates.models import candidate_subclass
-from fonduer.candidates.models import mention_subclass
-from fonduer.features import Featurizer
-from fonduer import Meta, init_logging
-from wiki_table_utils import entity_level_f1
-from fonduer.parser.models import Document
 import numpy as np
+
 import torch
+from fonduer import Meta, init_logging
+from fonduer.candidates import CandidateExtractor
+from fonduer.candidates.models import candidate_subclass, mention_subclass
+from fonduer.features import Featurizer
+from fonduer.learning import LogisticRegression
+from fonduer.parser.models import Document
+from wiki_table_utils import entity_level_f1
 
 ABSTAIN = 0
 FALSE = 1
@@ -56,4 +55,3 @@ gold_file = "data/president_tutorial_gold.csv"
 # TODO: we only need test docs
 test_docs = session.query(Document).order_by(Document.name).all()
 (TP, FP, FN) = entity_level_f1(true_pred, gold_file, test_docs)
-
