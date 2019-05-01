@@ -1,0 +1,5 @@
+name: fonduer-mlflow
+dependencies:
+  - ipython
+  - pip:
+    - fonduer==0.6.2
