@@ -713,6 +713,7 @@ disc_model = LogisticRegression()
 get_ipython().run_line_magic('time', 'disc_model.train((train_cands[0], F_train[0]), train_marginals, n_epochs=30, lr=0.001)')
 
 
+disc_model.save(model_file="best_model.pt", save_dir="./")
 # ### Evaluating on the Test Set
 # In this final section, we'll get the score we've been after: the performance of the extraction model on the blind test set (split 2). First, we load the test set labels and gold candidates from earlier:
 
