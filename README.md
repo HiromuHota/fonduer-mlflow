@@ -22,6 +22,12 @@ Deploy a PostgreSQL if you don't have one.
 $ docker run --name postgres -e POSTGRES_USER=ubuntu -d -p 5432:5432 postgres
 ```
 
+Create a database.
+
+```
+$ createdb pob_presidents
+```
+
 Create an anaconda environment and activate it.
 
 ```

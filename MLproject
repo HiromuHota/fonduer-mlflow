@@ -3,6 +3,6 @@ name: wiki
 
 entry_points:
   main:
-    command: "ipython train.py"
+    command: "python train.py"
   test:
     command: "python test.py"
