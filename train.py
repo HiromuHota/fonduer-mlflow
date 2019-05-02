@@ -487,7 +487,7 @@ plt.show()
 from fonduer.learning import LogisticRegression
 
 disc_model = LogisticRegression()
-get_ipython().run_line_magic('time', 'disc_model.train((train_cands[0], F_train[0]), train_marginals, n_epochs=30, lr=0.001)')
+get_ipython().run_line_magic('time', 'disc_model.train((train_cands[0], F_train[0]), train_marginals, n_epochs=10, lr=0.001)')
 
 
 disc_model.save(model_file="best_model.pt", save_dir="./")
