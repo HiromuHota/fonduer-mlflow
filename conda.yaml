@@ -3,3 +3,4 @@ dependencies:
   - pip:
     - torch==1.0.1.post2
     - fonduer==0.6.2
+    - mlflow
