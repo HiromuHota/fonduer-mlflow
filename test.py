@@ -10,7 +10,6 @@ from fonduer.features import Featurizer
 from fonduer.learning import LogisticRegression
 from fonduer.parser import Parser
 from fonduer.parser.preprocessors import HTMLDocPreprocessor
-from mentionconfig import *
 
 ABSTAIN = 0
 FALSE = 1
@@ -24,6 +23,8 @@ PARALLEL = 4 # assuming a quad-core machine
 ATTRIBUTE = "pob_presidents"
 conn_string = 'postgresql://localhost:5432/' + ATTRIBUTE
 session = Meta.init(conn_string).Session()
+
+from mentionconfig import *
 
 # Parse docs
 logger.info("parsing...")
