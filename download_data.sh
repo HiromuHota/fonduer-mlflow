@@ -13,4 +13,9 @@ tar -zxvf $data_tar.tar.gz -C data
 echo "Deleting tar file..."
 rm $data_tar.tar.gz
 
+echo "Split data..."
+mkdir data/new
+mv data/presidents/W* data/new/
+mv data/presidents data/train
+
 echo "Done!"
