@@ -10,13 +10,6 @@ Jupyter Notebook might be good for the development phase but never be good for t
 
 ## Prepare
 
-Convert a Jupyter Notebook to a Python script.
-
-```
-$ jupyter nbconvert --to script some.ipynb
-$ sed -i -e "s/get_ipython().run_line_magic('matplotlib', 'inline')/import matplotlib\nmatplotlib.use('Agg')/" some.py
-```
-
 Download data.
 
 ```
@@ -52,6 +45,16 @@ Install spacy English model.
 
 ```
 (fonduer-mlflow) $ mlflow run -e test ./ --no-conda
+```
+
+# Acknowlegements
+
+Most of the initial codes were derived from the wiki tutorial of [fonduer-tutorials](https://github.com/HazyResearch/fonduer-tutorials).
+The Jupyter Notebook was converted to a Python script as follows:
+
+```
+$ jupyter nbconvert --to script some.ipynb
+$ sed -i -e "s/get_ipython().run_line_magic('matplotlib', 'inline')/import matplotlib\nmatplotlib.use('Agg')/" some.py
 ```
 
 # TODO
