@@ -81,7 +81,7 @@ session = Meta.init(conn_string).Session()
 from fonduer.parser.preprocessors import HTMLDocPreprocessor
 from fonduer.parser import Parser
 
-docs_path = "data/presidents/"
+docs_path = "data/train/"
 doc_preprocessor = HTMLDocPreprocessor(docs_path)
 
 
@@ -114,199 +114,12 @@ print(f"Sentences: {session.query(Sentence).count()}")
 # In[7]:
 
 
-docs = session.query(Document).order_by(Document.name).all()
-ld = len(docs)
+train_docs = session.query(Document).order_by(Document.name).all()
 
-train_docs = set()
-dev_docs = set()
-test_docs = set()
-splits = (0.7, 0.85)
-data = [(doc.name, doc) for doc in docs]
-data.sort(key=lambda x: x[0])
-for i, (doc_name, doc) in enumerate(data):
-    if i < splits[0] * ld:
-        train_docs.add(doc)
-    elif i < splits[1] * ld:
-        dev_docs.add(doc)
-    else:
-        test_docs.add(doc)
-from pprint import pprint
+# Mention
 
-pprint([x.name for x in train_docs])
-
-
-# # Phase 2: Mention Extraction, Candidate Extraction Multimodal Featurization
-# 
-# Given the unified data model from Phase 1, `Fonduer` extracts relation
-# candidates based on user-provided **matchers** and **throttlers**. Then,
-# `Fonduer` leverages the multimodality information captured in the unified data
-# model to provide multimodal features for each candidate.
-# 
-# ## 2.1 Mention Extraction
-# 
-# The first step is to extract **mentions** from our corpus. A `mention` is the
-# type of object which makes up a `candidate`. For example, if we wanted to
-# extract pairs of (vice) president names and their corresponding place of birth, the name would be one `mention` while
-# the place of birth would be another. These `mention`s are then combined to
-# create `candidates`, where our task is to predict which `candidates` are true
-# in the associated document.
-# 
-# We first start by defining and naming our two `mention`s:
-
-# In[8]:
-
-
-from fonduer.candidates.models import mention_subclass
-
-Presidentname = mention_subclass("Presidentname")
-Placeofbirth = mention_subclass("Placeofbirth")
-
-
-# Next, we write **matchers** to define which spans of text in the corpus are
-# instances of each entity. Matchers can leverage a variety of information from
-# regular expressions, to dictionaries, to user-defined functions. Furthermore,
-# different techniques can be combined to form higher quality matchers. In
-# general, matchers should seek to be as precise as possible while maintaining
-# complete recall. More documentation about Matchers can be found on [Read the Docs](https://fonduer.readthedocs.io/en/stable/user/candidates.html#matchers).
-# 
-# In our case, we need to write a matcher that defines a string for the name of 
-# the president and another matcher to define the place of birth
-# 
-# ### Writing a simple name matcher
-# 
-# Our name matcher makes use of the fact that the name of the president is 
-# indicated in the html file name. We define a function that compares a `span` of 
-# text with the file name to find mentions of the president.
-# Because we previously converted the document into a unified data model, each
-# `span` of text has a reference to its source document name, which makes comparison
-# with the source file name easy:
-
-# In[9]:
-
-
-def mention_span_matches_file_name(mention):
-    president_name_string = mention.get_span()
-    file_name = mention.sentence.document.name.replace("_", " ")
-    if president_name_string == file_name:
-        return True
-    else:
-        return False
-
-
-# We use a `LambdaFunctionMatcher` to wrap this function into a `Fonduer` mention matcher.
-
-# In[10]:
-
-
-from fonduer.candidates.matchers import LambdaFunctionMatcher, Intersect, Union
-
-president_name_matcher = LambdaFunctionMatcher(func=mention_span_matches_file_name)
-
-
-# ### Writing a place of birth matcher
-# 
-# While the place of birth is also a regular string, we rather want to match it based on it's location in the document.
-# By inspecting the html files, we can find out that each file contains a table with the most important information about the respective president. We observe that there is typically a label in the left column and the corresponding value in the right column.
-# To capture this information, we define a function that checks whether a `span` is inside a table and its neighboring cells in the same row contain the label 'birth place'.
-# Furthermore, we observe that birth places are typically split into a fine-grained location, followed by its respective state. As we want to gather more fine-grained information, we specify to extract only the first `spans` of text inside the cell.
-
-# In[11]:
-
-
-from fonduer.utils.data_model_utils import get_row_ngrams
-
-
-def is_in_birthplace_table_row(mention):
-    if not mention.sentence.is_tabular():
-        return False
-    ngrams = get_row_ngrams(mention, lower=True)
-    birth_place_words = set(["birth", "place"])
-    if birth_place_words <= set(ngrams):
-        return True
-    else:
-        return False
-
-
-def birthplace_left_aligned_to_punctuation(mention):
-    # Return false, if the cell containing the text candidate does not have any reference
-    # to `sentence` objects
-    for sentence in mention.sentence.cell.sentences:
-        sentence_parts = sentence.text.split(",")
-        for sentence_part in sentence_parts:
-            if sentence_part.startswith(mention.get_span()):
-                return True
-    return False
-
-
-# We only want one granularity of the birth place
-def no_commas_in_birth_place(mention):
-    if "," in mention.get_span():
-        return False
-    else:
-        return True
-
-
-# After defining all functions to capture the properties of a birth place mention, we combine them via an `Intersect` matcher. This matcher will only select a `span`, if all three functions agree.
-
-# In[12]:
-
-
-birth_place_in_labeled_row_matcher = LambdaFunctionMatcher(
-    func=is_in_birthplace_table_row
-)
-birth_place_in_labeled_row_matcher.longest_match_only = False
-birth_place_no_commas_matcher = LambdaFunctionMatcher(func=no_commas_in_birth_place)
-birth_place_left_aligned_matcher = LambdaFunctionMatcher(
-    func=birthplace_left_aligned_to_punctuation
-)
-
-place_of_birth_matcher = Intersect(
-    birth_place_in_labeled_row_matcher,
-    birth_place_no_commas_matcher,
-    birth_place_left_aligned_matcher,
-)
-
-
-# These two matchers define each entity in our relation schema.
-
-# ### Define a Mention's `MentionSpace`
-# 
-# Next, in order to define the "space" of all mentions that are even considered
-# from the document, we need to define a `MentionSpace` for each component of the
-# relation we wish to extract. Fonduer provides a default `MentionSpace` for you
-# to use, but you can also extend the default `MentionSpace` depending on your
-# needs.
-# 
-# In the case of names, the `MentionSpace` can be relatively simple: We know that
-# each name will contain at least two words (first name, last name). Considering
-# additional middle names, we expect a maximum of four words per name.
-# 
-# Similarly, we expect the place of birth to be a `span` of one to three words.
-# 
-# We use the default `Ngrams` class provided by `fonduer` to define these properties:
-
-# In[13]:
-
-
-from fonduer.candidates import MentionNgrams
-
-presname_ngrams = MentionNgrams(n_max=4, n_min=2)
-placeofbirth_ngrams = MentionNgrams(n_max=3)
-
-
-# ### Running Mention Extraction 
-# 
-# Next, we create a `MentionExtractor` to extract the mentions from all of
-# our documents based on the `MentionSpace` and matchers we defined above.
-# 
-# View the API for the MentionExtractor on [ReadTheDocs](https://fonduer.readthedocs.io/en/stable/user/candidates.html#fonduer.candidates.MentionExtractor).
-# 
-
-# In[14]:
-
-
+from mentionconfig import *
 from fonduer.candidates import MentionExtractor
-
 mention_extractor = MentionExtractor(
     session,
     [Presidentname, Placeofbirth],
@@ -322,7 +135,7 @@ mention_extractor = MentionExtractor(
 
 from fonduer.candidates.models import Mention
 
-mention_extractor.apply(docs, parallelism=PARALLEL)
+mention_extractor.apply(train_docs, parallelism=PARALLEL)
 num_names = session.query(Presidentname).count()
 num_pobs = session.query(Placeofbirth).count()
 print(
@@ -371,15 +184,13 @@ candidate_extractor = CandidateExtractor(session, [PresidentnamePlaceofbirth])
 # In[18]:
 
 
-for i, docs in enumerate([train_docs, dev_docs, test_docs]):
+for i, docs in enumerate([train_docs]):
     candidate_extractor.apply(docs, split=i, parallelism=PARALLEL)
     print(
         f"Number of Candidates in split={i}: {session.query(PresidentnamePlaceofbirth).filter(PresidentnamePlaceofbirth.split == i).count()}"
     )
 
 train_cands = candidate_extractor.get_candidates(split=0)
-dev_cands = candidate_extractor.get_candidates(split=1)
-test_cands = candidate_extractor.get_candidates(split=2)
 
 
 # ## 2.2 Multimodal Featurization
@@ -398,23 +209,6 @@ from fonduer.features import Featurizer
 featurizer = Featurizer(session, [PresidentnamePlaceofbirth])
 get_ipython().run_line_magic('time', 'featurizer.apply(split=0, train=True, parallelism=PARALLEL)')
 get_ipython().run_line_magic('time', 'F_train = featurizer.get_feature_matrices(train_cands)')
-
-
-# In[20]:
-
-
-print(F_train[0].shape)
-get_ipython().run_line_magic('time', 'featurizer.apply(split=1, parallelism=PARALLEL)')
-get_ipython().run_line_magic('time', 'F_dev = featurizer.get_feature_matrices(dev_cands)')
-print(F_dev[0].shape)
-
-
-# In[21]:
-
-
-get_ipython().run_line_magic('time', 'featurizer.apply(split=2, parallelism=PARALLEL)')
-get_ipython().run_line_magic('time', 'F_test = featurizer.get_feature_matrices(test_cands)')
-print(F_test[0].shape)
 
 
 # At the end of this phase, `Fonduer` has generated the set of candidates and the feature matrix. Note that Phase 1 and 2 are relatively static and typically are only executed once during the KBC process.
@@ -672,23 +466,6 @@ import matplotlib.pyplot as plt
 
 plt.hist(train_marginals[:, TRUE-1], bins=20)
 plt.show()
-
-
-# ### Using the Model to Iterate on Labeling Functions
-# 
-# Now that we have learned the generative model, we can stop here and use this to potentially debug and/or improve our labeling function set. First, we apply the LFs to our development set:
-
-# In[31]:
-
-
-labeler.apply(split=1, lfs=[president_name_pob_lfs], parallelism=PARALLEL)
-get_ipython().run_line_magic('time', 'L_dev = labeler.get_label_matrices(dev_cands)')
-
-
-# In[32]:
-
-
-L_dev[0].shape
 
 
 # ### Interpreting Generative Model Performance

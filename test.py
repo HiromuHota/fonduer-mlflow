@@ -1,4 +1,5 @@
 import numpy as np
+import logging
 
 import torch
 from fonduer import Meta, init_logging
@@ -6,6 +7,8 @@ from fonduer.candidates import CandidateExtractor
 from fonduer.candidates.models import candidate_subclass, mention_subclass
 from fonduer.features import Featurizer
 from fonduer.learning import LogisticRegression
+from fonduer.parser.preprocessors import HTMLDocPreprocessor
+from fonduer.parser import Parser
 from fonduer.parser.models import Document
 from wiki_table_utils import entity_level_f1
 
@@ -15,26 +18,45 @@ TRUE = 2
 
 # Configure logging for Fonduer
 init_logging(log_dir="logs")
+logger = logging.getLogger(__name__)
 
 PARALLEL = 4 # assuming a quad-core machine
 ATTRIBUTE = "pob_presidents"
 conn_string = 'postgresql://localhost:5432/' + ATTRIBUTE
 session = Meta.init(conn_string).Session()
 
-# Mention
-Presidentname = mention_subclass("Presidentname")
-Placeofbirth = mention_subclass("Placeofbirth")
+# Parse docs
+logger.info("parsing...")
+docs_path = "data/new/"
+doc_preprocessor = HTMLDocPreprocessor(docs_path)
+corpus_parser = Parser(session, structural=True, lingual=True)
+# clear=False otherwise gets stuck.
+corpus_parser.apply(doc_preprocessor, clear=False, parallelism=PARALLEL)
+test_docs = corpus_parser.get_last_documents()
 
+
+# Mention
+from mentionconfig import *
+from fonduer.candidates import MentionExtractor
+mention_extractor = MentionExtractor(
+    session,
+    [Presidentname, Placeofbirth],
+    [presname_ngrams, placeofbirth_ngrams],
+    [president_name_matcher, place_of_birth_matcher],
+)
+mention_extractor.apply(test_docs, clear=False, parallelism=PARALLEL)
 
 # Candidate
 PresidentnamePlaceofbirth = candidate_subclass(
     "PresidentnamePlaceofbirth", [Presidentname, Placeofbirth]
 )
 candidate_extractor = CandidateExtractor(session, [PresidentnamePlaceofbirth])
+candidate_extractor.apply(test_docs, split=2, clear=False, parallelism=PARALLEL)
 test_cands = candidate_extractor.get_candidates(split=2)
 
 # Featurization
 featurizer = Featurizer(session, [PresidentnamePlaceofbirth])
+featurizer.apply(test_docs, clear=False)
 F_test = featurizer.get_feature_matrices(test_cands)
 
 disc_model = LogisticRegression()
