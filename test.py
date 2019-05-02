@@ -48,10 +48,7 @@ disc_model._build_model()
 disc_model.load(model_file="best_model.pt", save_dir="./")
 
 test_score = disc_model.predict((test_cands[0], F_test[0]), b=0.6, pos_label=TRUE)
-true_pred = [test_cands[0][_] for _ in np.nditer(np.where(test_score == TRUE))]
+true_preds = [test_cands[0][_] for _ in np.nditer(np.where(test_score == TRUE))]
 
-gold_file = "data/president_tutorial_gold.csv"
-
-# TODO: we only need test docs
-test_docs = session.query(Document).order_by(Document.name).all()
-(TP, FP, FN) = entity_level_f1(true_pred, gold_file, test_docs)
+for true_pred in true_preds:
+    print(', '.join([m.context.get_span() for m in true_pred.get_mentions()]))
