@@ -1,16 +1,16 @@
-import numpy as np
 import logging
+
+import numpy as np
 
 import torch
 from fonduer import Meta, init_logging
-from fonduer.candidates import CandidateExtractor
-from fonduer.candidates.models import candidate_subclass, mention_subclass
+from fonduer.candidates import CandidateExtractor, MentionExtractor
+from fonduer.candidates.models import candidate_subclass
 from fonduer.features import Featurizer
 from fonduer.learning import LogisticRegression
-from fonduer.parser.preprocessors import HTMLDocPreprocessor
 from fonduer.parser import Parser
-from fonduer.parser.models import Document
-from wiki_table_utils import entity_level_f1
+from fonduer.parser.preprocessors import HTMLDocPreprocessor
+from mentionconfig import *
 
 ABSTAIN = 0
 FALSE = 1
@@ -35,9 +35,6 @@ corpus_parser.apply(doc_preprocessor, clear=False, parallelism=PARALLEL)
 test_docs = corpus_parser.get_last_documents()
 
 
-# Mention
-from mentionconfig import *
-from fonduer.candidates import MentionExtractor
 mention_extractor = MentionExtractor(
     session,
     [Presidentname, Placeofbirth],
