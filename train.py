@@ -59,14 +59,11 @@ from fonduer.candidates import CandidateExtractor
 
 
 candidate_extractor = CandidateExtractor(session, [PresidentnamePlaceofbirth])
-
-for i, docs in enumerate([train_docs]):
-    candidate_extractor.apply(docs, split=i, parallelism=PARALLEL)
-    print(
-        f"Number of Candidates in split={i}: {session.query(PresidentnamePlaceofbirth).filter(PresidentnamePlaceofbirth.split == i).count()}"
-    )
-
+candidate_extractor.apply(train_docs, split=0, parallelism=PARALLEL)
 train_cands = candidate_extractor.get_candidates(split=0)
+print(
+    f"Number of Candidates: {len(train_cands)}"
+)
 
 from fonduer.features import Featurizer
 
@@ -110,6 +107,4 @@ from fonduer.learning import LogisticRegression
 
 disc_model = LogisticRegression()
 disc_model.train((train_cands[0], F_train[0]), train_marginals, n_epochs=10, lr=0.001)
-
-
 disc_model.save(model_file="best_model.pt", save_dir="./")
