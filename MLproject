@@ -4,5 +4,7 @@ name: wiki
 entry_points:
   main:
     command: "python train.py"
-  test:
-    command: "python test.py"
+  predict:
+    parameters:
+      filename: path
+    command: "python predict.py {filename}"

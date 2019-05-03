@@ -47,10 +47,10 @@ Install spacy English model.
 (fonduer-mlflow) $ mlflow run ./ --no-conda
 ```
 
-## Test
+## Serve
 
 ```
-(fonduer-mlflow) $ mlflow run -e test ./ --no-conda
+(fonduer-mlflow) $ mlflow run -e predict -P filename=data/new/Warren_G._Harding.html ./ --no-conda
 ```
 
 # Acknowlegements
