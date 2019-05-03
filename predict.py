@@ -52,7 +52,7 @@ def predict(filename):
         "PresidentnamePlaceofbirth", [Presidentname, Placeofbirth]
     )
     candidate_extractor = CandidateExtractor(session, [PresidentnamePlaceofbirth])
-    candidate_extractor.apply(test_docs, split=2, clear=False, parallelism=PARALLEL)
+    candidate_extractor.apply(test_docs, split=2, clear=True, parallelism=PARALLEL)
     test_cands = candidate_extractor.get_candidates(split=2)
 
     # Featurization
