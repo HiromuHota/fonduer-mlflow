@@ -28,6 +28,18 @@ session = Meta.init(conn_string).Session()
 from mentionconfig import *  # isort:skip
 
 
+def get_entity_relation(candidate):
+    return tuple(([m.context.get_span() for m in candidate.get_mentions()]))
+
+
+def get_unique_entity_relations(candidates):
+    unique_entity_relation = set()
+    for candidate in candidates:
+        entity_relation = get_entity_relation(candidate)
+        unique_entity_relation.add(entity_relation)
+    return unique_entity_relation
+
+
 def predict(filename):
     # Parse docs
     logger.info("parsing...")
@@ -73,8 +85,8 @@ def predict(filename):
     test_score = disc_model.predict((test_cands[0], F_test[0]), b=0.6, pos_label=TRUE)
     true_preds = [test_cands[0][_] for _ in np.nditer(np.where(test_score == TRUE))]
 
-    for true_pred in true_preds:
-        print(', '.join([m.context.get_span() for m in true_pred.get_mentions()]))
+    for entity_relation in get_unique_entity_relations(true_preds):
+        print(entity_relation)
 
 if __name__ == '__main__':
     filename = sys.argv[1]
