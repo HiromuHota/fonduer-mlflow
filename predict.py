@@ -1,9 +1,10 @@
 import logging
+import pickle
 import sys
 
 import numpy as np
-
 import torch
+
 from fonduer import Meta, init_logging
 from fonduer.candidates import CandidateExtractor, MentionExtractor
 from fonduer.candidates.models import candidate_subclass
@@ -69,6 +70,10 @@ def predict(filename):
 
     # Featurization
     featurizer = Featurizer(session, [PresidentnamePlaceofbirth])
+    with open('feature_keys.pkl', 'rb') as f:
+        key_names = pickle.load(f)
+    featurizer.drop_keys(key_names)
+    featurizer.upsert_keys(key_names)
     featurizer.apply(test_docs, clear=False)
     F_test = featurizer.get_feature_matrices(test_cands)
 

@@ -66,9 +66,13 @@ print(
 )
 
 from fonduer.features import Featurizer
+import pickle
 
 featurizer = Featurizer(session, [PresidentnamePlaceofbirth])
 featurizer.apply(split=0, train=True, parallelism=PARALLEL)
+key_names = [key.name for key in featurizer.get_keys()]
+with open('feature_keys.pkl', 'wb') as f:
+    pickle.dump(key_names, f)
 F_train = featurizer.get_feature_matrices(train_cands)
 
 from wiki_table_utils import load_president_gold_labels

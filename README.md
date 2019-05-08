@@ -38,6 +38,7 @@ $ conda activate fonduer-mlflow
 Install spacy English model.
 
 ```
+(fonduer-mlflow) $ pip install git+https://github.com/HazyResearch/fonduer.git
 (fonduer-mlflow) $ python -m spacy download en
 ```
 
