@@ -7,7 +7,6 @@ import torch
 
 from fonduer import Meta, init_logging
 from fonduer.candidates import CandidateExtractor, MentionExtractor
-from fonduer.candidates.models import candidate_subclass
 from fonduer.features import Featurizer
 from fonduer.learning import LogisticRegression
 from fonduer.parser import Parser
@@ -51,7 +50,6 @@ def predict(filename):
     corpus_parser.apply(doc_preprocessor, clear=False, parallelism=PARALLEL)
     test_docs = corpus_parser.get_last_documents()
 
-
     mention_extractor = MentionExtractor(
         session,
         mention_classes, mention_spaces, matchers
@@ -87,6 +85,7 @@ def predict(filename):
 
     for entity_relation in get_unique_entity_relations(true_preds):
         print(entity_relation)
+
 
 if __name__ == '__main__':
     filename = sys.argv[1]
