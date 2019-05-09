@@ -24,17 +24,6 @@ logger = logging.getLogger(__name__)
 
 PARALLEL = 4 # assuming a quad-core machine
 
-def get_entity_relation(candidate):
-    return tuple(([m.context.get_span() for m in candidate.get_mentions()]))
-
-
-def get_unique_entity_relations(candidates):
-    unique_entity_relation = set()
-    for candidate in candidates:
-        entity_relation = get_entity_relation(candidate)
-        unique_entity_relation.add(entity_relation)
-    return unique_entity_relation
-
 
 class FonduerModel(mlflow.pyfunc.PythonModel):
 
@@ -91,8 +80,20 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
         test_score = self.disc_model.predict((test_cands[0], F_test[0]), b=0.6, pos_label=TRUE)
         true_preds = [test_cands[0][_] for _ in np.nditer(np.where(test_score == TRUE))]
 
-        for entity_relation in get_unique_entity_relations(true_preds):
+        for entity_relation in FonduerModel.get_unique_entity_relations(true_preds):
             print(entity_relation)
+
+    @staticmethod
+    def get_entity_relation(candidate):
+        return tuple(([m.context.get_span() for m in candidate.get_mentions()]))
+
+    @staticmethod
+    def get_unique_entity_relations(candidates):
+        unique_entity_relation = set()
+        for candidate in candidates:
+            entity_relation = FonduerModel.get_entity_relation(candidate)
+            unique_entity_relation.add(entity_relation)
+        return unique_entity_relation
 
 
 if __name__ == '__main__':
