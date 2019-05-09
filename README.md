@@ -1,10 +1,10 @@
 # Overview
 
-This project aims at managing the ops side of Fonduer-based applications.
-A Fonduer-based app lifecycle has two phases: developement and operations.
-Development starts from mention/candidate extraction, labeling functions development, to train a discriminative model using exisiting documents.
-Operations includes deployment of the model that extracts knowledge from new documents.
-Jupyter Notebook might be good for the development phase but never be good for the operations phase.
+This project aims at managing the lifecycle of a Fonduer-based application.
+Roughly a Fonduer-based app lifecycle has two phases: training and serving.
+Training, aka development, starts from mention/candidate extraction, labeling functions development, to train a generative/discriminative model using traing data, and test the model with test data.
+Serving includes deployment of the model that serves to extract knowledge from new data.
+Jupyter Notebook might be good for development but never be good for serving the model.
 
 # MLflow Projects
 
