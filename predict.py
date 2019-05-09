@@ -3,6 +3,7 @@ import pickle
 import sys
 
 import numpy as np
+import pandas as pd
 import torch
 
 from fonduer import Meta, init_logging
@@ -40,7 +41,11 @@ def get_unique_entity_relations(candidates):
     return unique_entity_relation
 
 
-def predict(filename):
+def predict(model_input):
+    for index, row in model_input.iterrows():
+        _process(row['filename'])
+
+def _process(filename):
     # Parse docs
     logger.info("parsing...")
     docs_path = filename
@@ -89,4 +94,5 @@ def predict(filename):
 
 if __name__ == '__main__':
     filename = sys.argv[1]
-    predict(filename)
+    model_input = pd.DataFrame({'filename': [filename]})
+    predict(model_input)
