@@ -31,7 +31,7 @@ train_docs = session.query(Document).order_by(Document.name).all()
 
 # Mention
 
-from mentionconfig import mention_classes, mention_spaces, matchers
+from mentionconfig import mention_classes, mention_spaces, matchers, candidate_classes
 from fonduer.candidates import MentionExtractor
 mention_extractor = MentionExtractor(
     session,
@@ -41,32 +41,26 @@ mention_extractor = MentionExtractor(
 from fonduer.candidates.models import Mention
 
 mention_extractor.apply(train_docs, parallelism=PARALLEL)
-num_names = session.query(Presidentname).count()
-num_pobs = session.query(Placeofbirth).count()
+#num_names = session.query(Presidentname).count()
+#num_pobs = session.query(Placeofbirth).count()
 print(
-    f"Total Mentions: {session.query(Mention).count()} ({num_names} names, {num_pobs} places of birth)"
-)
-
-from fonduer.candidates.models import candidate_subclass
-
-PresidentnamePlaceofbirth = candidate_subclass(
-    "PresidentnamePlaceofbirth", [Presidentname, Placeofbirth]
+    f"Total Mentions: {session.query(Mention).count()}"
 )
 
 from fonduer.candidates import CandidateExtractor
 
 
-candidate_extractor = CandidateExtractor(session, [PresidentnamePlaceofbirth])
+candidate_extractor = CandidateExtractor(session, candidate_classes)
 candidate_extractor.apply(train_docs, split=0, parallelism=PARALLEL)
 train_cands = candidate_extractor.get_candidates(split=0)
 print(
-    f"Number of Candidates: {len(train_cands)}"
+    f"Number of Candidates: {len(train_cands[0])}"
 )
 
 from fonduer.features import Featurizer
 import pickle
 
-featurizer = Featurizer(session, [PresidentnamePlaceofbirth])
+featurizer = Featurizer(session, candidate_classes)
 featurizer.apply(split=0, train=True, parallelism=PARALLEL)
 key_names = [key.name for key in featurizer.get_keys()]
 with open('feature_keys.pkl', 'wb') as f:
@@ -77,14 +71,14 @@ from wiki_table_utils import load_president_gold_labels
 
 gold_file = "data/president_tutorial_gold.csv"
 load_president_gold_labels(
-    session, PresidentnamePlaceofbirth, gold_file, annotator_name="gold"
+    session, candidate_classes, gold_file, annotator_name="gold"
 )
 
 from lfconfig import president_name_pob_lfs, TRUE
 
 from fonduer.supervision import Labeler
 
-labeler = Labeler(session, [PresidentnamePlaceofbirth])
+labeler = Labeler(session, candidate_classes)
 labeler.apply(split=0, lfs=[president_name_pob_lfs], train=True, parallelism=PARALLEL)
 L_train = labeler.get_label_matrices(train_cands)
 

@@ -26,7 +26,7 @@ ATTRIBUTE = "pob_presidents"
 conn_string = 'postgresql://localhost:5432/' + ATTRIBUTE
 session = Meta.init(conn_string).Session()
 
-from mentionconfig import matchers, mention_classes, mention_spaces  # isort:skip
+from mentionconfig import matchers, mention_classes, mention_spaces, candidate_classes  # isort:skip
 
 
 def get_entity_relation(candidate):
@@ -59,15 +59,12 @@ def predict(filename):
     mention_extractor.apply(test_docs, clear=False, parallelism=PARALLEL)
 
     # Candidate
-    PresidentnamePlaceofbirth = candidate_subclass(
-        "PresidentnamePlaceofbirth", [Presidentname, Placeofbirth]
-    )
-    candidate_extractor = CandidateExtractor(session, [PresidentnamePlaceofbirth])
+    candidate_extractor = CandidateExtractor(session, candidate_classes)
     candidate_extractor.apply(test_docs, split=2, clear=True, parallelism=PARALLEL)
     test_cands = candidate_extractor.get_candidates(split=2)
 
     # Featurization
-    featurizer = Featurizer(session, [PresidentnamePlaceofbirth])
+    featurizer = Featurizer(session, candidate_classes)
     with open('feature_keys.pkl', 'rb') as f:
         key_names = pickle.load(f)
     featurizer.drop_keys(key_names)
