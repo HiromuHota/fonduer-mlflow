@@ -38,39 +38,24 @@ def get_unique_entity_relations(candidates):
 
 class FonduerModel(mlflow.pyfunc.PythonModel):
 
-    def predict(self, context, model_input):
-        for index, row in model_input.iterrows():
-            self._process(row['filename'])
+    def __init__(self):
+        ATTRIBUTE = "pob_presidents"
+        conn_string = 'postgresql://localhost:5432/' + ATTRIBUTE
+        session = Meta.init(conn_string).Session()
+        from fonduerconfig import matchers, mention_classes, mention_spaces, candidate_classes  # isort:skip
 
-    def _process(self, filename):
-        # Parse docs
-        logger.info("parsing...")
-        docs_path = filename
-        doc_preprocessor = HTMLDocPreprocessor(docs_path)
-        corpus_parser = Parser(session, structural=True, lingual=True)
-        # clear=False otherwise gets stuck.
-        corpus_parser.apply(doc_preprocessor, clear=False, parallelism=PARALLEL)
-        test_docs = corpus_parser.get_last_documents()
-
-        mention_extractor = MentionExtractor(
+        self.corpus_parser = Parser(session, structural=True, lingual=True)
+        self.mention_extractor = MentionExtractor(
             session,
             mention_classes, mention_spaces, matchers
         )
-        mention_extractor.apply(test_docs, clear=False, parallelism=PARALLEL)
+        self.candidate_extractor = CandidateExtractor(session, candidate_classes)
 
-        # Candidate
-        candidate_extractor = CandidateExtractor(session, candidate_classes)
-        candidate_extractor.apply(test_docs, split=2, clear=True, parallelism=PARALLEL)
-        test_cands = candidate_extractor.get_candidates(split=2)
-
-        # Featurization
-        featurizer = Featurizer(session, candidate_classes)
+        self.featurizer = Featurizer(session, candidate_classes)
         with open('feature_keys.pkl', 'rb') as f:
             key_names = pickle.load(f)
-        featurizer.drop_keys(key_names)
-        featurizer.upsert_keys(key_names)
-        featurizer.apply(test_docs, clear=False)
-        F_test = featurizer.get_feature_matrices(test_cands)
+        self.featurizer.drop_keys(key_names)
+        self.featurizer.upsert_keys(key_names)
 
         disc_model = LogisticRegression()
 
@@ -81,8 +66,31 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
         disc_model._build_model()
 
         disc_model.load(model_file="best_model.pt", save_dir="./")
+        self.disc_model = disc_model
 
-        test_score = disc_model.predict((test_cands[0], F_test[0]), b=0.6, pos_label=TRUE)
+    def predict(self, context, model_input):
+        for index, row in model_input.iterrows():
+            self._process(row['filename'])
+
+    def _process(self, filename):
+        # Parse docs
+        docs_path = filename
+        doc_preprocessor = HTMLDocPreprocessor(docs_path)
+        # clear=False otherwise gets stuck.
+        self.corpus_parser.apply(doc_preprocessor, clear=False, parallelism=PARALLEL)
+        test_docs = self.corpus_parser.get_last_documents()
+
+        self.mention_extractor.apply(test_docs, clear=False, parallelism=PARALLEL)
+
+        # Candidate
+        self.candidate_extractor.apply(test_docs, split=2, clear=True, parallelism=PARALLEL)
+        test_cands = self.candidate_extractor.get_candidates(split=2)
+
+        # Featurization
+        self.featurizer.apply(test_docs, clear=False)
+        F_test = self.featurizer.get_feature_matrices(test_cands)
+
+        test_score = self.disc_model.predict((test_cands[0], F_test[0]), b=0.6, pos_label=TRUE)
         true_preds = [test_cands[0][_] for _ in np.nditer(np.where(test_score == TRUE))]
 
         for entity_relation in get_unique_entity_relations(true_preds):
@@ -90,10 +98,6 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
 
 
 if __name__ == '__main__':
-    ATTRIBUTE = "pob_presidents"
-    conn_string = 'postgresql://localhost:5432/' + ATTRIBUTE
-    session = Meta.init(conn_string).Session()
-    from fonduerconfig import matchers, mention_classes, mention_spaces, candidate_classes  # isort:skip
     model = FonduerModel()
 
     filename = sys.argv[1]
