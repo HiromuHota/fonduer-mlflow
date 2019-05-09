@@ -26,7 +26,7 @@ ATTRIBUTE = "pob_presidents"
 conn_string = 'postgresql://localhost:5432/' + ATTRIBUTE
 session = Meta.init(conn_string).Session()
 
-from mentionconfig import matchers, mention_classes, mention_spaces, candidate_classes  # isort:skip
+from fonduerconfig import matchers, mention_classes, mention_spaces, candidate_classes  # isort:skip
 
 
 def get_entity_relation(candidate):
