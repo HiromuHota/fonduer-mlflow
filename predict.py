@@ -38,9 +38,7 @@ def get_unique_entity_relations(candidates):
 
 class FonduerModel(mlflow.pyfunc.PythonModel):
 
-    def __init__(self):
-        ATTRIBUTE = "pob_presidents"
-        conn_string = 'postgresql://localhost:5432/' + ATTRIBUTE
+    def __init__(self, conn_string):
         session = Meta.init(conn_string).Session()
         from fonduerconfig import matchers, mention_classes, mention_spaces, candidate_classes  # isort:skip
 
@@ -98,7 +96,9 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
 
 
 if __name__ == '__main__':
-    model = FonduerModel()
+    DB = "pob_presidents"
+    conn_string = 'postgresql://localhost:5432/' + DB
+    model = FonduerModel(conn_string)
 
     filename = sys.argv[1]
     model_input = pd.DataFrame({'filename': [filename]})
