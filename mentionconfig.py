@@ -82,3 +82,7 @@ from fonduer.candidates import MentionNgrams
 
 presname_ngrams = MentionNgrams(n_max=4, n_min=2)
 placeofbirth_ngrams = MentionNgrams(n_max=3)
+
+mention_classes = [Presidentname, Placeofbirth]
+mention_spaces = [presname_ngrams, placeofbirth_ngrams]
+matchers = [president_name_matcher, place_of_birth_matcher]

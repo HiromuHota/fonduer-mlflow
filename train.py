@@ -31,13 +31,11 @@ train_docs = session.query(Document).order_by(Document.name).all()
 
 # Mention
 
-from mentionconfig import *
+from mentionconfig import mention_classes, mention_spaces, matchers
 from fonduer.candidates import MentionExtractor
 mention_extractor = MentionExtractor(
     session,
-    [Presidentname, Placeofbirth],
-    [presname_ngrams, placeofbirth_ngrams],
-    [president_name_matcher, place_of_birth_matcher],
+    mention_classes, mention_spaces, matchers
 )
 
 from fonduer.candidates.models import Mention

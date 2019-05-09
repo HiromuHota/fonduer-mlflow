@@ -26,7 +26,7 @@ ATTRIBUTE = "pob_presidents"
 conn_string = 'postgresql://localhost:5432/' + ATTRIBUTE
 session = Meta.init(conn_string).Session()
 
-from mentionconfig import *  # isort:skip
+from mentionconfig import matchers, mention_classes, mention_spaces  # isort:skip
 
 
 def get_entity_relation(candidate):
@@ -54,9 +54,7 @@ def predict(filename):
 
     mention_extractor = MentionExtractor(
         session,
-        [Presidentname, Placeofbirth],
-        [presname_ngrams, placeofbirth_ngrams],
-        [president_name_matcher, place_of_birth_matcher],
+        mention_classes, mention_spaces, matchers
     )
     mention_extractor.apply(test_docs, clear=False, parallelism=PARALLEL)
 
