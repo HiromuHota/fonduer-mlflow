@@ -48,10 +48,17 @@ Install spacy English model.
 (fonduer-mlflow) $ mlflow run ./ --no-conda
 ```
 
-## Serve
+# MLflow Models
+
+## Deploys the model as a local REST API server
 
 ```
-(fonduer-mlflow) $ mlflow run -e predict -P filename=data/new/Warren_G._Harding.html ./ --no-conda
+$ mlflow pyfunc serve -m fonduer_model
+```
+
+
+```
+$ curl -X POST -H "Content-Type:application/json; format=pandas-split" --data '{"columns":["filename"], "data":["data/new/Woodrow_Wilson.html"]}' http://127.0.0.1:5000/invocations
 ```
 
 # Acknowlegements
@@ -63,7 +70,3 @@ The Jupyter Notebook was converted to a Python script as follows:
 $ jupyter nbconvert --to script some.ipynb
 $ sed -i -e "s/get_ipython().run_line_magic('matplotlib', 'inline')/import matplotlib\nmatplotlib.use('Agg')/" some.py
 ```
-
-# TODO
-
-- MLflow Models
