@@ -1,0 +1,3 @@
+flavors:
+  python_function:
+    loader_module: fonduer_model_loader

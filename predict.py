@@ -55,7 +55,7 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
         disc_model.load(model_file="best_model.pt", save_dir="./")
         self.disc_model = disc_model
 
-    def predict(self, context, model_input):
+    def predict(self, model_input):
         df = pd.DataFrame()
         for index, row in model_input.iterrows():
             df = df.append(self._process(row['filename']))
@@ -107,9 +107,14 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
 if __name__ == '__main__':
     DB = "pob_presidents"
     conn_string = 'postgresql://localhost:5432/' + DB
-    model = FonduerModel(conn_string)
+    model = FonduerModel()
+    model_path = "fonduer_model"
+    mlflow.pyfunc.save_model(dst_path="fonduer_model", python_model=model)
+
+    loaded_model = mlflow.pyfunc.load_pyfunc(model_path)
+    loaded_model.init(conn_string)
 
     filename = sys.argv[1]
     model_input = pd.DataFrame({'filename': [filename]})
-    df = model.predict(None, model_input)
+    df = loaded_model.predict(model_input)
     print(df)
