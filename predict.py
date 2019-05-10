@@ -56,8 +56,10 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
         self.disc_model = disc_model
 
     def predict(self, context, model_input):
+        df = pd.DataFrame()
         for index, row in model_input.iterrows():
-            self._process(row['filename'])
+            df = df.append(self._process(row['filename']))
+        return df
 
     def _process(self, filename):
         # Parse docs
@@ -80,8 +82,14 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
         test_score = self.disc_model.predict((test_cands[0], F_test[0]), b=0.6, pos_label=TRUE)
         true_preds = [test_cands[0][_] for _ in np.nditer(np.where(test_score == TRUE))]
 
+        df = pd.DataFrame()
         for entity_relation in FonduerModel.get_unique_entity_relations(true_preds):
-            print(entity_relation)
+            df = df.append(
+                pd.DataFrame([entity_relation],
+                columns=[m.__name__ for m in self.mention_extractor.mention_classes]
+                )
+            )
+        return df
 
     @staticmethod
     def get_entity_relation(candidate):
@@ -103,4 +111,5 @@ if __name__ == '__main__':
 
     filename = sys.argv[1]
     model_input = pd.DataFrame({'filename': [filename]})
-    model.predict(None, model_input)
+    df = model.predict(None, model_input)
+    print(df)
