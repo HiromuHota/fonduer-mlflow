@@ -55,7 +55,7 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
         disc_model.load(model_file="best_model.pt", save_dir="./")
         self.disc_model = disc_model
 
-    def predict(self, context, model_input):
+    def predict(self, model_input):
         df = pd.DataFrame()
         for index, row in model_input.iterrows():
             df = df.append(self._process(row['filename']))
@@ -103,13 +103,27 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
             unique_entity_relation.add(entity_relation)
         return unique_entity_relation
 
-
-if __name__ == '__main__':
+def _load_model(model_file):
     DB = "pob_presidents"
     conn_string = 'postgresql://localhost:5432/' + DB
     model = FonduerModel(conn_string)
+    return model
 
-    filename = sys.argv[1]
-    model_input = pd.DataFrame({'filename': [filename]})
-    df = model.predict(None, model_input)
-    print(df)
+def _load_pyfunc(path, **kwargs):
+    """
+    Load PyFunc implementation. Called by ``pyfunc.load_pyfunc``.
+    """
+    return _FonduerWrapper(_load_model(path, **kwargs))
+
+
+class _FonduerWrapper(object):
+    """
+    Wrapper class that creates a predict function such that
+    predict(data: pd.DataFrame) -> model's output as pd.DataFrame (pandas DataFrame)
+    """
+    def __init__(self, fonduer_model):
+        self.fonduer_model = fonduer_model
+
+    def predict(self, dataframe):
+        predicted = self.fonduer_model.predict(dataframe)
+        return predicted

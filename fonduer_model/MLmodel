@@ -1,0 +1,4 @@
+flavors:
+  python_function:
+    loader_module: fonduer_model
+    code: code
