@@ -1,8 +1,10 @@
 import logging
 import pickle
-import sys
+import os
 
 import mlflow.pyfunc
+from mlflow.pyfunc.model import PythonModelContext
+from mlflow.models import Model
 import numpy as np
 import pandas as pd
 import torch
@@ -13,6 +15,8 @@ from fonduer.features import Featurizer
 from fonduer.learning import LogisticRegression
 from fonduer.parser import Parser
 from fonduer.parser.preprocessors import HTMLDocPreprocessor
+
+CONN_STRING = "conn_string"
 
 ABSTAIN = 0
 FALSE = 1
@@ -55,7 +59,10 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
         disc_model.load(model_file="best_model.pt", save_dir="./")
         self.disc_model = disc_model
 
-    def predict(self, model_input):
+    def load_context(self, context):
+        logger.info("loading context")
+
+    def predict(self, context, model_input):
         df = pd.DataFrame()
         for index, row in model_input.iterrows():
             df = df.append(self._process(row['filename']))
@@ -103,17 +110,21 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
             unique_entity_relation.add(entity_relation)
         return unique_entity_relation
 
-def _load_model(model_file):
-    DB = "pob_presidents"
-    conn_string = 'postgresql://localhost:5432/' + DB
-    model = FonduerModel(conn_string)
-    return model
 
-def _load_pyfunc(path, **kwargs):
+def _load_pyfunc(model_path):
     """
     Load PyFunc implementation. Called by ``pyfunc.load_pyfunc``.
     """
-    return _FonduerWrapper(_load_model(path, **kwargs))
+    model_configuration_path = os.path.join(model_path, "MLmodel")
+    model_conf = Model.load(model_configuration_path)
+    pyfunc_config = model_conf.flavors["python_function"]
+    conn_string = pyfunc_config.get(CONN_STRING, None)
+    if conn_string is None:
+        raise RuntimeError("conn_string is missing from MLmodel file.")
+    fonduer_model = FonduerModel(conn_string)
+    context = PythonModelContext(artifacts=None)
+    fonduer_model.load_context(context=context)
+    return _FonduerWrapper(fonduer_model, context)
 
 
 class _FonduerWrapper(object):
@@ -121,9 +132,15 @@ class _FonduerWrapper(object):
     Wrapper class that creates a predict function such that
     predict(data: pd.DataFrame) -> model's output as pd.DataFrame (pandas DataFrame)
     """
-    def __init__(self, fonduer_model):
+    def __init__(self, fonduer_model, context):
+        """
+        :param python_model: An instance of a subclass of :class:`~PythonModel`.
+        :param context: A :class:`~PythonModelContext` instance containing artifacts that
+                        ``python_model`` may use when performing inference.
+        """
         self.fonduer_model = fonduer_model
+        self.context = context
 
     def predict(self, dataframe):
-        predicted = self.fonduer_model.predict(dataframe)
+        predicted = self.fonduer_model.predict(self.context, dataframe)
         return predicted
