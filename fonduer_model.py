@@ -1,6 +1,7 @@
 import logging
 import os
 import pickle
+import shutil
 
 import numpy as np
 import pandas as pd
@@ -35,7 +36,9 @@ class FonduerModel(pyfunc.PythonModel):
     def __init__(self, model_path):
         pyfunc_conf = _get_flavor_configuration(model_path=model_path,
                                                 flavor_name=pyfunc.FLAVOR_NAME)
-        conn_string = pyfunc_conf["conn_string"]
+        conn_string = pyfunc_conf.get(CONN_STRING, None)
+        if conn_string is None:
+            raise RuntimeError("conn_string is missing from MLmodel file.")
         session = Meta.init(conn_string).Session()
         from fonduerconfig import matchers, mention_classes, mention_spaces, candidate_classes  # isort:skip
 
@@ -119,12 +122,6 @@ def _load_pyfunc(model_path):
     """
     Load PyFunc implementation. Called by ``pyfunc.load_pyfunc``.
     """
-    model_configuration_path = os.path.join(model_path, "MLmodel")
-    model_conf = Model.load(model_configuration_path)
-    pyfunc_config = model_conf.flavors["python_function"]
-    conn_string = pyfunc_config.get(CONN_STRING, None)
-    if conn_string is None:
-        raise RuntimeError("conn_string is missing from MLmodel file.")
     fonduer_model = FonduerModel(model_path)
     context = PythonModelContext(artifacts=None)
     fonduer_model.load_context(context=context)
@@ -132,15 +129,12 @@ def _load_pyfunc(model_path):
 
 
 def save_model(model_path, featurizer, disc_model, conn_string):
-    import shutil
-    import os
     os.makedirs(model_path)
-    model_code_subpath = "code"
-    model_code_path = os.path.join(model_path, model_code_subpath)
+    model_code_path = os.path.join(model_path, pyfunc.CODE)
     os.makedirs(model_code_path)
 
-    shutil.copy("fonduerconfig.py", os.path.join(model_path, "code"))
-    shutil.copy("fonduer_model.py", os.path.join(model_path, "code"))
+    shutil.copy("fonduerconfig.py", model_code_path)
+    shutil.copy("fonduer_model.py", model_code_path)
     key_names = [key.name for key in featurizer.get_keys()]
     with open(os.path.join(model_path, 'feature_keys.pkl'), 'wb') as f:
         pickle.dump(key_names, f)
@@ -148,8 +142,8 @@ def save_model(model_path, featurizer, disc_model, conn_string):
 
     mlflow_model = Model()
     mlflow_model.add_flavor(
-        "python_function",
-        code=model_code_subpath,
+        pyfunc.FLAVOR_NAME,
+        code=pyfunc.CODE,
         loader_module="fonduer_model",
         conn_string=conn_string,
     )
