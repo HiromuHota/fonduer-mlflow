@@ -38,9 +38,6 @@ train_docs = session.query(Document).order_by(Document.name).all()
 # Mention
 
 from fonduerconfig import mention_classes, mention_spaces, matchers, candidate_classes
-import shutil
-shutil.copy("fonduerconfig.py", "fonduer_model/code")
-shutil.copy("fonduer_model.py", "fonduer_model/code")
 from fonduer.candidates import MentionExtractor
 mention_extractor = MentionExtractor(
     session,
@@ -71,9 +68,6 @@ import pickle
 
 featurizer = Featurizer(session, candidate_classes)
 featurizer.apply(split=0, train=True, parallelism=PARALLEL)
-key_names = [key.name for key in featurizer.get_keys()]
-with open('feature_keys.pkl', 'wb') as f:
-    pickle.dump(key_names, f)
 F_train = featurizer.get_feature_matrices(train_cands)
 
 from wiki_table_utils import load_president_gold_labels
@@ -112,4 +106,11 @@ from fonduer.learning import LogisticRegression
 
 disc_model = LogisticRegression()
 disc_model.train((train_cands[0], F_train[0]), train_marginals, n_epochs=10, lr=0.001)
-disc_model.save(model_file="best_model.pt", save_dir="./")
+
+import fonduer_model
+fonduer_model.save_model(
+    "fonduer_model",
+    featurizer=featurizer,
+    disc_model=disc_model,
+    conn_string=conn_string,
+)

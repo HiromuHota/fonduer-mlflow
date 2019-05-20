@@ -2,9 +2,10 @@ import logging
 import pickle
 import os
 
-import mlflow.pyfunc
+from mlflow import pyfunc
 from mlflow.pyfunc.model import PythonModelContext
 from mlflow.models import Model
+from mlflow.utils.model_utils import _get_flavor_configuration
 import numpy as np
 import pandas as pd
 import torch
@@ -29,9 +30,12 @@ logger = logging.getLogger(__name__)
 PARALLEL = 4 # assuming a quad-core machine
 
 
-class FonduerModel(mlflow.pyfunc.PythonModel):
+class FonduerModel(pyfunc.PythonModel):
 
-    def __init__(self, conn_string):
+    def __init__(self, model_path):
+        pyfunc_conf = _get_flavor_configuration(model_path=model_path,
+                                                flavor_name=pyfunc.FLAVOR_NAME)
+        conn_string = pyfunc_conf["conn_string"]
         session = Meta.init(conn_string).Session()
         from fonduerconfig import matchers, mention_classes, mention_spaces, candidate_classes  # isort:skip
 
@@ -43,7 +47,7 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
         self.candidate_extractor = CandidateExtractor(session, candidate_classes)
 
         self.featurizer = Featurizer(session, candidate_classes)
-        with open('feature_keys.pkl', 'rb') as f:
+        with open(os.path.join(model_path, 'feature_keys.pkl'), 'rb') as f:
             key_names = pickle.load(f)
         self.featurizer.drop_keys(key_names)
         self.featurizer.upsert_keys(key_names)
@@ -51,12 +55,12 @@ class FonduerModel(mlflow.pyfunc.PythonModel):
         disc_model = LogisticRegression()
 
         # Workaround to https://github.com/HazyResearch/fonduer/issues/208
-        checkpoint = torch.load("./best_model.pt")
+        checkpoint = torch.load(os.path.join(model_path, "best_model.pt"))
         disc_model.settings = checkpoint["config"]
         disc_model.cardinality = checkpoint["cardinality"]
         disc_model._build_model()
 
-        disc_model.load(model_file="best_model.pt", save_dir="./")
+        disc_model.load(model_file="best_model.pt", save_dir=model_path)
         self.disc_model = disc_model
 
     def load_context(self, context):
@@ -121,10 +125,35 @@ def _load_pyfunc(model_path):
     conn_string = pyfunc_config.get(CONN_STRING, None)
     if conn_string is None:
         raise RuntimeError("conn_string is missing from MLmodel file.")
-    fonduer_model = FonduerModel(conn_string)
+    fonduer_model = FonduerModel(model_path)
     context = PythonModelContext(artifacts=None)
     fonduer_model.load_context(context=context)
     return _FonduerWrapper(fonduer_model, context)
+
+
+def save_model(model_path, featurizer, disc_model, conn_string):
+    import shutil
+    import os
+    os.makedirs(model_path)
+    model_code_subpath = "code"
+    model_code_path = os.path.join(model_path, model_code_subpath)
+    os.makedirs(model_code_path)
+
+    shutil.copy("fonduerconfig.py", os.path.join(model_path, "code"))
+    shutil.copy("fonduer_model.py", os.path.join(model_path, "code"))
+    key_names = [key.name for key in featurizer.get_keys()]
+    with open(os.path.join(model_path, 'feature_keys.pkl'), 'wb') as f:
+        pickle.dump(key_names, f)
+    disc_model.save(model_file="best_model.pt", save_dir=model_path)
+
+    mlflow_model = Model()
+    mlflow_model.add_flavor(
+        "python_function",
+        code=model_code_subpath,
+        loader_module="fonduer_model",
+        conn_string=conn_string,
+    )
+    mlflow_model.save(os.path.join(model_path, "MLmodel"))
 
 
 class _FonduerWrapper(object):

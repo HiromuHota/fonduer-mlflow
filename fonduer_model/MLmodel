@@ -1,5 +1,0 @@
-flavors:
-  python_function:
-    loader_module: fonduer_model
-    code: code
-    conn_string: postgresql://localhost:5432/pob_presidents
