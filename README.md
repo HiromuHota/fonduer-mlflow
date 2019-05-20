@@ -45,7 +45,7 @@ Install spacy English model.
 ## Train
 
 ```
-(fonduer-mlflow) $ mlflow run ./ --no-conda
+(fonduer-mlflow) $ mlflow run ./ --no-conda -P conn_string=postgresql://localhost:5432/pob_presidents
 ```
 
 # MLflow Models

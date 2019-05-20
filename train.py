@@ -1,9 +1,15 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import argparse
+
+parser = argparse.ArgumentParser(description='Fonduer')
+parser.add_argument('--conn_string', help='conn string')
+args = parser.parse_args()
+
 PARALLEL = 4 # assuming a quad-core machine
-ATTRIBUTE = "pob_presidents"
-conn_string = 'postgresql://localhost:5432/' + ATTRIBUTE
+conn_string = args.conn_string
+print(conn_string)
 
 from fonduer import Meta, init_logging
 
