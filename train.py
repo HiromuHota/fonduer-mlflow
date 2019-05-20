@@ -38,6 +38,8 @@ train_docs = session.query(Document).order_by(Document.name).all()
 # Mention
 
 from fonduerconfig import mention_classes, mention_spaces, matchers, candidate_classes
+import shutil
+shutil.copy("fonduerconfig.py", "fonduer_model/code")
 from fonduer.candidates import MentionExtractor
 mention_extractor = MentionExtractor(
     session,
