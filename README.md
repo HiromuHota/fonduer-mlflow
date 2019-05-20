@@ -6,7 +6,7 @@ Training, aka development, starts from mention/candidate extraction, labeling fu
 Serving includes deployment of the model that serves to extract knowledge from new data.
 Jupyter Notebook might be good for development but never be good for serving the model.
 
-# MLflow Projects
+# MLflow Project
 
 ## Prepare
 
@@ -48,7 +48,7 @@ Install spacy English model.
 (fonduer-mlflow) $ mlflow run ./ --no-conda -P conn_string=postgresql://localhost:5432/pob_presidents
 ```
 
-# MLflow Models
+# MLflow Model
 
 ## Deploys the model as a local REST API server
 
@@ -70,3 +70,8 @@ The Jupyter Notebook was converted to a Python script as follows:
 $ jupyter nbconvert --to script some.ipynb
 $ sed -i -e "s/get_ipython().run_line_magic('matplotlib', 'inline')/import matplotlib\nmatplotlib.use('Agg')/" some.py
 ```
+
+# TODO
+
+- Split the training phase into smaller phases: parsing, mention extraction, candidate extraction, etc.
+- How to package a model
