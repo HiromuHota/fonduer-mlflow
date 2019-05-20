@@ -1,14 +1,14 @@
 import logging
-import pickle
 import os
+import pickle
 
-from mlflow import pyfunc
-from mlflow.pyfunc.model import PythonModelContext
-from mlflow.models import Model
-from mlflow.utils.model_utils import _get_flavor_configuration
 import numpy as np
 import pandas as pd
 import torch
+from mlflow import pyfunc
+from mlflow.models import Model
+from mlflow.pyfunc.model import PythonModelContext
+from mlflow.utils.model_utils import _get_flavor_configuration
 
 from fonduer import Meta, init_logging
 from fonduer.candidates import CandidateExtractor, MentionExtractor
