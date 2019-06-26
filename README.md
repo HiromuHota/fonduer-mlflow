@@ -53,7 +53,7 @@ Install spacy English model.
 ## Deploys the model as a local REST API server
 
 ```
-$ mlflow pyfunc serve -m fonduer_model
+$ mlflow models serve -m fonduer_model -w 1
 ```
 
 
