@@ -48,6 +48,43 @@ Install spacy English model.
 (fonduer-mlflow) $ mlflow run ./ --no-conda -P conn_string=postgresql://localhost:5432/pob_presidents
 ```
 
+The trained Fonduer model will be saved at `fonduer_model`.
+
+Let's see what's inside
+
+```bash
+(fonduer-mlflow) $ tree fonduer_model
+fonduer_model
+├── MLmodel
+├── best_model.pt
+├── code
+├── feature_keys.pkl
+└── fonduer_model.pkl
+```
+
+In order for this model to work, some dependent python files need to be saved at `fonduer_model/code`
+
+```bash
+$ cp fonduerconfig.py fonduer_model/code/
+$ cp fonduer_model.py fonduer_model/code/
+$ cp my_fonduer_model.py fonduer_model/code/
+```
+
+Now you'll get
+
+```bash
+(fonduer-mlflow) $ tree fonduer_model
+fonduer_model
+├── MLmodel
+├── best_model.pt
+├── code
+│   ├── fonduer_model.py
+│   ├── fonduerconfig.py
+│   └── my_fonduer_model.py
+├── feature_keys.pkl
+└── fonduer_model.pkl
+```
+
 # MLflow Model
 
 ## Deploys the model as a local REST API server
@@ -58,7 +95,7 @@ $ mlflow models serve -m fonduer_model -w 1
 
 
 ```
-$ curl -X POST -H "Content-Type:application/json; format=pandas-split" --data '{"columns":["filename"], "data":["data/new/Woodrow_Wilson.html"]}' http://127.0.0.1:5000/invocations
+$ curl -X POST -H "Content-Type:application/json; format=pandas-split" --data '{"columns":["path"], "data":["data/new/Woodrow_Wilson.html"]}' http://127.0.0.1:5000/invocations
 ```
 
 # Acknowlegements

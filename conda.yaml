@@ -1,5 +1,6 @@
 name: fonduer-mlflow
 dependencies:
+  - pip
   - pip:
-    - torch==1.0.1.post2
-    - mlflow
+    - torch==1.1.0
+    - mlflow==1.2.0

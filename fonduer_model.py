@@ -1,144 +1,196 @@
 import logging
 import os
 import pickle
-import shutil
+from typing import Iterable, List, Optional
 
-import numpy as np
-import pandas as pd
 import torch
 from mlflow import pyfunc
 from mlflow.models import Model
 from mlflow.pyfunc.model import PythonModelContext
 from mlflow.utils.model_utils import _get_flavor_configuration
+from pandas import DataFrame
+from sqlalchemy.orm import Session
 
 from fonduer import Meta, init_logging
-from fonduer.candidates import CandidateExtractor, MentionExtractor
+from fonduer.parser import Parser
+from fonduer.parser.models import Document
+from fonduer.candidates import MentionExtractor, CandidateExtractor
 from fonduer.features import Featurizer
 from fonduer.learning import LogisticRegression
-from fonduer.parser import Parser
-from fonduer.parser.preprocessors import HTMLDocPreprocessor
+from fonduer.learning.classifier import Classifier
+from fonduer.supervision import Labeler
+from metal.label_model import LabelModel
 
-CONN_STRING = "conn_string"
-
-ABSTAIN = 0
-FALSE = 1
-TRUE = 2
-
-# Configure logging for Fonduer
-init_logging(log_dir="logs")
 logger = logging.getLogger(__name__)
 
-PARALLEL = 4 # assuming a quad-core machine
+CONN_STRING = "conn_string"
+MODEL_TYPE = "model_type"
+PARALLEL = "parallel"
 
 
 class FonduerModel(pyfunc.PythonModel):
+    """
+    A custom MLflow model for Fonduer.
+    """
 
-    def __init__(self, model_path):
-        pyfunc_conf = _get_flavor_configuration(model_path=model_path,
-                                                flavor_name=pyfunc.FLAVOR_NAME)
+    def __init__(self, model_path: str) -> None:
+        self.model_path = model_path
+
+    def _get_doc_preprocessor(self, path: str) -> Iterable[Document]:
+        raise NotImplementedError()
+
+    def _get_parser(self, session: Session) -> Parser:
+        raise NotImplementedError()
+
+    def _get_mention_extractor(self, session: Session) -> MentionExtractor:
+        raise NotImplementedError()
+
+    def _get_candidate_extractor(self, session: Session) -> CandidateExtractor:
+        raise NotImplementedError()
+
+    def _classify(self) -> DataFrame:
+        raise NotImplementedError()
+
+    def load_context(self, context: PythonModelContext) -> None:
+        # Configure logging for Fonduer
+        init_logging(log_dir="logs")
+        logger.info("loading context")
+
+        pyfunc_conf = _get_flavor_configuration(
+            model_path=self.model_path, flavor_name=pyfunc.FLAVOR_NAME
+        )
         conn_string = pyfunc_conf.get(CONN_STRING, None)
         if conn_string is None:
             raise RuntimeError("conn_string is missing from MLmodel file.")
+        self.parallel = pyfunc_conf.get(PARALLEL, 1)
         session = Meta.init(conn_string).Session()
-        from fonduerconfig import matchers, mention_classes, mention_spaces, candidate_classes  # isort:skip
 
-        self.corpus_parser = Parser(session, structural=True, lingual=True)
-        self.mention_extractor = MentionExtractor(
-            session,
-            mention_classes, mention_spaces, matchers
-        )
-        self.candidate_extractor = CandidateExtractor(session, candidate_classes)
+        logger.info("Getting parser")
+        self.corpus_parser = self._get_parser(session)
+        logger.info("Getting mention extractor")
+        self.mention_extractor = self._get_mention_extractor(session)
+        logger.info("Getting candidate extractor")
+        self.candidate_extractor = self._get_candidate_extractor(session)
+        candidate_classes = self.candidate_extractor.candidate_classes
 
-        self.featurizer = Featurizer(session, candidate_classes)
-        with open(os.path.join(model_path, 'feature_keys.pkl'), 'rb') as f:
-            key_names = pickle.load(f)
-        self.featurizer.drop_keys(key_names)
-        self.featurizer.upsert_keys(key_names)
+        self.model_type = pyfunc_conf.get(MODEL_TYPE, "discriminative")
+        if self.model_type == "discriminative":
+            self.featurizer = Featurizer(session, candidate_classes)
+            with open(os.path.join(self.model_path, "feature_keys.pkl"), "rb") as f:
+                key_names = pickle.load(f)
+            self.featurizer.drop_keys(key_names)
+            self.featurizer.upsert_keys(key_names)
 
-        disc_model = LogisticRegression()
+            disc_model = LogisticRegression()
 
-        # Workaround to https://github.com/HazyResearch/fonduer/issues/208
-        checkpoint = torch.load(os.path.join(model_path, "best_model.pt"))
-        disc_model.settings = checkpoint["config"]
-        disc_model.cardinality = checkpoint["cardinality"]
-        disc_model._build_model()
+            # Workaround to https://github.com/HazyResearch/fonduer/issues/208
+            checkpoint = torch.load(os.path.join(self.model_path, "best_model.pt"))
+            disc_model.settings = checkpoint["config"]
+            disc_model.cardinality = checkpoint["cardinality"]
+            disc_model._build_model()
 
-        disc_model.load(model_file="best_model.pt", save_dir=model_path)
-        self.disc_model = disc_model
+            disc_model.load(model_file="best_model.pt", save_dir=self.model_path)
+            self.disc_model = disc_model
+        else:
+            self.labeler = Labeler(session, candidate_classes)
+            with open(os.path.join(self.model_path, "labeler_keys.pkl"), "rb") as f:
+                key_names = pickle.load(f)
+            self.labeler.drop_keys(key_names)
+            self.labeler.upsert_keys(key_names)
 
-    def load_context(self, context):
-        logger.info("loading context")
+            self.gen_models = [
+                LabelModel.load(os.path.join(self.model_path, _.__name__ + ".pkl"))
+                for _ in candidate_classes
+            ]
 
-    def predict(self, context, model_input):
-        df = pd.DataFrame()
+    def predict(self, context: PythonModelContext, model_input: DataFrame) -> DataFrame:
+        df = DataFrame()
         for index, row in model_input.iterrows():
-            df = df.append(self._process(row['filename']))
+            df = df.append(self._process(row["path"]))
         return df
 
-    def _process(self, filename):
+    def _process(self, path: str) -> DataFrame:
+        """
+        Takes a file/directory path and returns values extracted from the file or files in that directory.
+
+        :param path: a file/directory path.
+        """
+        if not os.path.exists(path):
+            raise RuntimeError("path should be a file/directory path")
         # Parse docs
-        docs_path = filename
-        doc_preprocessor = HTMLDocPreprocessor(docs_path)
+        doc_preprocessor = self._get_doc_preprocessor(path)
         # clear=False otherwise gets stuck.
-        self.corpus_parser.apply(doc_preprocessor, clear=False, parallelism=PARALLEL)
+        self.corpus_parser.apply(
+            doc_preprocessor, clear=False, parallelism=self.parallel, pdf_path=path
+        )
+        logger.info(f"Parsing {path}")
         test_docs = self.corpus_parser.get_last_documents()
 
-        self.mention_extractor.apply(test_docs, clear=False, parallelism=PARALLEL)
+        logger.info(f"Extracting mentions from {path}")
+        self.mention_extractor.apply(test_docs, clear=False, parallelism=self.parallel)
 
-        # Candidate
-        self.candidate_extractor.apply(test_docs, split=2, clear=True, parallelism=PARALLEL)
-        test_cands = self.candidate_extractor.get_candidates(split=2)
+        logger.info(f"Extracting candidates from {path}")
+        self.candidate_extractor.apply(
+            test_docs, split=2, clear=True, parallelism=self.parallel
+        )
 
-        # Featurization
-        self.featurizer.apply(test_docs, clear=False)
-        F_test = self.featurizer.get_feature_matrices(test_cands)
-
-        test_score = self.disc_model.predict((test_cands[0], F_test[0]), b=0.6, pos_label=TRUE)
-        true_preds = [test_cands[0][_] for _ in np.nditer(np.where(test_score == TRUE))]
-
-        df = pd.DataFrame()
-        for entity_relation in FonduerModel.get_unique_entity_relations(true_preds):
-            df = df.append(
-                pd.DataFrame([entity_relation],
-                columns=[m.__name__ for m in self.mention_extractor.mention_classes]
-                )
-            )
+        logger.info(f"Classifying candidates from {path}")
+        df = self._classify()
         return df
 
-    @staticmethod
-    def get_entity_relation(candidate):
-        return tuple(([m.context.get_span() for m in candidate.get_mentions()]))
 
-    @staticmethod
-    def get_unique_entity_relations(candidates):
-        unique_entity_relation = set()
-        for candidate in candidates:
-            entity_relation = FonduerModel.get_entity_relation(candidate)
-            unique_entity_relation.add(entity_relation)
-        return unique_entity_relation
-
-
-def _load_pyfunc(model_path):
+def _load_pyfunc(model_path: str):
     """
     Load PyFunc implementation. Called by ``pyfunc.load_pyfunc``.
     """
-    fonduer_model = FonduerModel(model_path)
+    with open(os.path.join(model_path, "fonduer_model.pkl"), "rb") as f:
+        fonduer_model = pickle.load(f)
     context = PythonModelContext(artifacts=None)
     fonduer_model.load_context(context=context)
     return _FonduerWrapper(fonduer_model, context)
 
 
-def save_model(model_path, featurizer, disc_model, conn_string):
+def save_model(
+    fonduer_model: FonduerModel,
+    model_path: str,
+    conn_string: str,
+    parallel: Optional[int] = 1,
+    model_type: Optional[str] = "discriminative",
+    labeler: Optional[Labeler] = None,
+    gen_models: Optional[List[LabelModel]] = None,
+    featurizer: Optional[Featurizer] = None,
+    disc_model: Optional[Classifier] = None,
+) -> None:
+    """Save a custom MLflow model to a path on the local file system.
+
+    :param fonduer_model: the model to be saved.
+    :param model_path: the path on the local file system.
+    :param conn_string: the connection string.
+    :param parallel: the number of parallelism.
+    :param model_type: the model type, either "discriminative" or "generative", defaults to "discriminative".
+    :param labeler: a labeler, defaults to None.
+    :param gen_models: a list of generative models, defaults to None.
+    :param featurizer: a featurizer, defaults to None.
+    :param disc_model: a discriminative model, defaults to None.
+    """
     os.makedirs(model_path)
     model_code_path = os.path.join(model_path, pyfunc.CODE)
     os.makedirs(model_code_path)
 
-    shutil.copy("fonduerconfig.py", model_code_path)
-    shutil.copy("fonduer_model.py", model_code_path)
-    key_names = [key.name for key in featurizer.get_keys()]
-    with open(os.path.join(model_path, 'feature_keys.pkl'), 'wb') as f:
-        pickle.dump(key_names, f)
-    disc_model.save(model_file="best_model.pt", save_dir=model_path)
+    with open(os.path.join(model_path, "fonduer_model.pkl"), "wb") as f:
+        pickle.dump(fonduer_model, f)
+    if model_type == "discriminative":
+        key_names = [key.name for key in featurizer.get_keys()]
+        with open(os.path.join(model_path, "feature_keys.pkl"), "wb") as f:
+            pickle.dump(key_names, f)
+        disc_model.save(model_file="best_model.pt", save_dir=model_path)
+    else:
+        for candidate_class, gen_model in zip(labeler.candidate_classes, gen_models):
+            gen_model.save(os.path.join(model_path, candidate_class.__name__ + ".pkl"))
+
+        key_names = [key.name for key in labeler.get_keys()]
+        with open(os.path.join(model_path, "labeler_keys.pkl"), "wb") as f:
+            pickle.dump(key_names, f)
 
     mlflow_model = Model()
     mlflow_model.add_flavor(
@@ -146,6 +198,8 @@ def save_model(model_path, featurizer, disc_model, conn_string):
         code=pyfunc.CODE,
         loader_module="fonduer_model",
         conn_string=conn_string,
+        parallel=parallel,
+        model_type=model_type,
     )
     mlflow_model.save(os.path.join(model_path, "MLmodel"))
 
@@ -155,7 +209,10 @@ class _FonduerWrapper(object):
     Wrapper class that creates a predict function such that
     predict(data: pd.DataFrame) -> model's output as pd.DataFrame (pandas DataFrame)
     """
-    def __init__(self, fonduer_model, context):
+
+    def __init__(
+        self, fonduer_model: FonduerModel, context: PythonModelContext
+    ) -> None:
         """
         :param python_model: An instance of a subclass of :class:`~PythonModel`.
         :param context: A :class:`~PythonModelContext` instance containing artifacts that
@@ -164,6 +221,6 @@ class _FonduerWrapper(object):
         self.fonduer_model = fonduer_model
         self.context = context
 
-    def predict(self, dataframe):
+    def predict(self, dataframe: DataFrame) -> DataFrame:
         predicted = self.fonduer_model.predict(self.context, dataframe)
         return predicted
