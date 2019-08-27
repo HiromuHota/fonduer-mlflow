@@ -108,7 +108,7 @@ disc_model = LogisticRegression()
 disc_model.train((train_cands[0], F_train[0]), train_marginals, n_epochs=10, lr=0.001)
 
 from my_fonduer_model import MyFonduerModel
-model = MyFonduerModel(model_path="fonduer_model")
+model = MyFonduerModel()
 
 import fonduer_model
 fonduer_model.save_model(

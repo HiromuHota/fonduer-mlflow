@@ -32,10 +32,6 @@ class FonduerModel(pyfunc.PythonModel):
     """
     A custom MLflow model for Fonduer.
     """
-
-    def __init__(self, model_path: str) -> None:
-        self.model_path = model_path
-
     def _get_doc_preprocessor(self, path: str) -> Iterable[Document]:
         raise NotImplementedError()
 
@@ -145,6 +141,7 @@ def _load_pyfunc(model_path: str):
     """
     with open(os.path.join(model_path, "fonduer_model.pkl"), "rb") as f:
         fonduer_model = pickle.load(f)
+    fonduer_model.model_path = model_path
     context = PythonModelContext(artifacts=None)
     fonduer_model.load_context(context=context)
     return _FonduerWrapper(fonduer_model, context)

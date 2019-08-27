@@ -1,12 +1,32 @@
 # Overview
 
 This project aims at managing the lifecycle of a Fonduer-based application.
-Roughly a Fonduer-based app lifecycle has two phases: training and serving.
-Training, aka development, starts from mention/candidate extraction, labeling functions development, to train a generative/discriminative model using traing data, and test the model with test data.
-Serving includes deployment of the model that serves to extract knowledge from new data.
-Jupyter Notebook might be good for development but never be good for serving the model.
+Roughly a Fonduer-based app lifecycle has three phases: development, training, and serving.
 
-# MLflow Project
+| Fonduer paper | Author's view | Framework / Interface |
+| --- | --- | --- |
+| Development | Development | Jupyter Notebook / Web GUI |
+| Production | Training | MLflow Project / CLI |
+| Production | Serving | MLflow Model / Rest API |
+
+In the development phase, a developer writes Python codes in that a parser, mention/candidate extractors, labeling functions, and a classifier are defined.
+Once they are defined, a model can be trained using a training document set.
+Serving includes deployment of this trained model that serves to extract knowledge from a new document.
+
+Jupyter Notebook might be good for development but not always good for training and serving.
+This project uses MLflow both in the training phase for reproducibility and in the serving phase for deployability.
+
+# Development
+
+Most of the initial codes were derived from the wiki tutorial of [fonduer-tutorials](https://github.com/HazyResearch/fonduer-tutorials).
+The Jupyter Notebook was converted to a Python script as follows:
+
+```
+$ jupyter nbconvert --to script some.ipynb
+$ sed -i -e "s/get_ipython().run_line_magic('matplotlib', 'inline')/import matplotlib\nmatplotlib.use('Agg')/" some.py
+```
+
+# Training
 
 ## Prepare
 
@@ -85,7 +105,7 @@ fonduer_model
 └── fonduer_model.pkl
 ```
 
-# MLflow Model
+# Serving
 
 ## Deploys the model as a local REST API server
 
@@ -93,22 +113,19 @@ fonduer_model
 $ mlflow models serve -m fonduer_model -w 1
 ```
 
+If you send the following request to the API endpoint (`http://127.0.0.1:5000/invocations` in this case)
 
 ```
 $ curl -X POST -H "Content-Type:application/json; format=pandas-split" --data '{"columns":["path"], "data":["data/new/Woodrow_Wilson.html"]}' http://127.0.0.1:5000/invocations
 ```
 
-# Acknowlegements
+You will get a response like below:
 
-Most of the initial codes were derived from the wiki tutorial of [fonduer-tutorials](https://github.com/HazyResearch/fonduer-tutorials).
-The Jupyter Notebook was converted to a Python script as follows:
-
+```json
+[
+    {
+        "Presidentname": "Woodrow Wilson",
+        "Placeofbirth": "Staunton"
+    }
+]
 ```
-$ jupyter nbconvert --to script some.ipynb
-$ sed -i -e "s/get_ipython().run_line_magic('matplotlib', 'inline')/import matplotlib\nmatplotlib.use('Agg')/" some.py
-```
-
-# TODO
-
-- Split the training phase into smaller phases: parsing, mention extraction, candidate extraction, etc.
-- How to package a model
