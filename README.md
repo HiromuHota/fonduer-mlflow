@@ -116,7 +116,9 @@ $ mlflow models serve -m fonduer_model -w 1
 If you send the following request to the API endpoint (`http://127.0.0.1:5000/invocations` in this case)
 
 ```
-$ curl -X POST -H "Content-Type:application/json; format=pandas-split" --data '{"columns":["path"], "data":["data/new/Woodrow_Wilson.html"]}' http://127.0.0.1:5000/invocations
+$ curl -X POST -H "Content-Type:application/json; format=pandas-split" \
+  --data '{"columns":["path"], "data":["data/new/Woodrow_Wilson.html"]}' \
+  http://127.0.0.1:5000/invocations
 ```
 
 You will get a response like below:
