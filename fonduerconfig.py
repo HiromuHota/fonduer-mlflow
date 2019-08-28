@@ -3,6 +3,7 @@ This file defines:
 - Mention subclasses
 - Mention spaces
 - Mention matchers
+- Candidate subclasses
 """
 
 from fonduer.candidates.models import mention_subclass

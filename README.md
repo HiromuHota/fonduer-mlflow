@@ -18,13 +18,7 @@ This project uses MLflow both in the training phase for reproducibility and in t
 
 # Development
 
-Most of the initial codes were derived from the wiki tutorial of [fonduer-tutorials](https://github.com/HazyResearch/fonduer-tutorials).
-The Jupyter Notebook was converted to a Python script as follows:
-
-```
-$ jupyter nbconvert --to script some.ipynb
-$ sed -i -e "s/get_ipython().run_line_magic('matplotlib', 'inline')/import matplotlib\nmatplotlib.use('Agg')/" some.py
-```
+Let's assume that `fonduerconfig.py` and `lfconfig.py` have been already developed, each of which defines mention/candidate subclasses and labeling functions, respectively.
 
 # Training
 
@@ -62,13 +56,15 @@ Install spacy English model.
 (fonduer-mlflow) $ python -m spacy download en
 ```
 
-## Train
+## Train a model
 
 ```
 (fonduer-mlflow) $ mlflow run ./ --no-conda -P conn_string=postgresql://localhost:5432/pob_presidents
 ```
 
-The trained Fonduer model will be saved at `fonduer_model`.
+## Package a trained model
+
+A trained Fonduer model will be saved at `fonduer_model`.
 
 Let's see what's inside
 
@@ -105,6 +101,11 @@ fonduer_model
 └── fonduer_model.pkl
 ```
 
+`fonduer_model.py` defines `FonduerModel` that is a custom MLflow model (see [here](https://www.mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#creating-custom-pyfunc-models) for details) for Fonduer.
+`FonduerModel` has implemented methods, e.g., `load_context`, and also not-implemented methods, e.g., `_get_mention_extractor`.
+Implemented methods are implemented as they are, the author believes, common to any Fonduer-based application.
+Since different applications would have a different parser, different mention/candidate extractors, etc., not-implemented methods are left not implemented so that a developer can create a class, say `MyFonduerModel`, that inherits `FonduerModel` and overrides/implements them for their application.
+
 # Serving
 
 ## Deploys the model as a local REST API server
@@ -130,4 +131,14 @@ You will get a response like below:
         "Placeofbirth": "Staunton"
     }
 ]
+```
+
+# Acknowledgement
+
+Most of the initial codes were derived from the wiki tutorial of [fonduer-tutorials](https://github.com/HazyResearch/fonduer-tutorials).
+The Jupyter Notebook was converted to a Python script as follows:
+
+```
+$ jupyter nbconvert --to script some.ipynb
+$ sed -i -e "s/get_ipython().run_line_magic('matplotlib', 'inline')/import matplotlib\nmatplotlib.use('Agg')/" some.py
 ```
