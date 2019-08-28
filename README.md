@@ -3,11 +3,11 @@
 This project aims at managing the lifecycle of a Fonduer-based application.
 Roughly a Fonduer-based app lifecycle has three phases: development, training, and serving.
 
-| Fonduer paper | Author's view | Framework / Interface |
-| --- | --- | --- |
-| Development | Development | Jupyter Notebook / Web GUI |
-| Production | Training | MLflow Project / CLI |
-| Production | Serving | MLflow Model / Rest API |
+| Phase | Framework / Interface
+| --- | --- |
+| Development | Jupyter Notebook / Web GUI |
+| Training | MLflow Project / CLI |
+| Serving | MLflow Model / Rest API |
 
 In the development phase, a developer writes Python codes in that a parser, mention/candidate extractors, labeling functions, and a classifier are defined.
 Once they are defined, a model can be trained using a training document set.
