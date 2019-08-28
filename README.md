@@ -115,6 +115,9 @@ Since different applications would have a different parser, different mention/ca
 
 # Serving
 
+There are a few ways to deploy a MLflow-compatible model (see [here](https://mlflow.org/docs/latest/models.html#deploy-mlflow-models) for details).
+Let me show you one of the ways.
+
 ## Deploys the model as a local REST API server
 
 ```
