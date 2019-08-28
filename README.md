@@ -11,10 +11,15 @@ Roughly a Fonduer-based app lifecycle has three phases: development, training, a
 
 In the development phase, a developer writes Python codes in that a parser, mention/candidate extractors, labeling functions, and a classifier are defined.
 Once they are defined, a model can be trained using a training document set.
-Serving includes deployment of this trained model that serves to extract knowledge from a new document.
+A trained model will be deployed and will serve to extract knowledge from a new document.
 
 Jupyter Notebook might be good for development but not always good for training and serving.
-This project uses MLflow both in the training phase for reproducibility and in the serving phase for deployability.
+This project uses MLflow in the training phase for reproducibility (of training) and in the serving phase for packageability (of a trained model).
+
+Contributions to the Fonduer project include
+
+- Defined a Fonduer model: what it includes, which parts are common/different for different apps.
+- Created a custom MLflow model for Fonduer, which can be used to package a trained Fonduer model, deploy it, and let it serve.
 
 # Development
 
@@ -101,10 +106,12 @@ fonduer_model
 └── fonduer_model.pkl
 ```
 
-`fonduer_model.py` defines `FonduerModel` that is a custom MLflow model (see [here](https://www.mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#creating-custom-pyfunc-models) for details) for Fonduer.
+This `fonduer_model` folder is portable and can be deployed anywhere as long as a PostgreSQL server is accesible.
+
+It is worth noting that `fonduer_model.py` defines `FonduerModel` that is a custom MLflow model (see [here](https://www.mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#creating-custom-pyfunc-models) for details) for Fonduer.
 `FonduerModel` has implemented methods, e.g., `load_context`, and also not-implemented methods, e.g., `_get_mention_extractor`.
 Implemented methods are implemented as they are, the author believes, common to any Fonduer-based application.
-Since different applications would have a different parser, different mention/candidate extractors, etc., not-implemented methods are left not implemented so that a developer can create a class, say `MyFonduerModel`, that inherits `FonduerModel` and overrides/implements them for their application.
+Since different applications would have a different parser, different mention/candidate extractors, etc., not-implemented methods are left not-implemented so that a developer can create a class, say `MyFonduerModel`, that inherits `FonduerModel` and overrides/implements them for their application.
 
 # Serving
 
