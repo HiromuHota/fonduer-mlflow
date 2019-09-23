@@ -7,6 +7,7 @@ import torch
 from mlflow import pyfunc
 from mlflow.models import Model
 from mlflow.pyfunc.model import PythonModelContext
+from mlflow.utils.file_utils import _copy_file_or_tree
 from mlflow.utils.model_utils import _get_flavor_configuration
 from pandas import DataFrame
 from sqlalchemy.orm import Session
@@ -32,6 +33,7 @@ class FonduerModel(pyfunc.PythonModel):
     """
     A custom MLflow model for Fonduer.
     """
+
     def _get_doc_preprocessor(self, path: str) -> Iterable[Document]:
         raise NotImplementedError()
 
@@ -151,6 +153,7 @@ def save_model(
     fonduer_model: FonduerModel,
     model_path: str,
     conn_string: str,
+    code_paths: Optional[List[str]] = None,
     parallel: Optional[int] = 1,
     model_type: Optional[str] = "discriminative",
     labeler: Optional[Labeler] = None,
@@ -163,6 +166,7 @@ def save_model(
     :param fonduer_model: the model to be saved.
     :param model_path: the path on the local file system.
     :param conn_string: the connection string.
+    :param code_paths: A list of local filesystem paths to Python file dependencies (or directories containing file dependencies). These files are prepended to the system path when the model is loaded.
     :param parallel: the number of parallelism.
     :param model_type: the model type, either "discriminative" or "generative", defaults to "discriminative".
     :param labeler: a labeler, defaults to None.
@@ -188,6 +192,11 @@ def save_model(
         key_names = [key.name for key in labeler.get_keys()]
         with open(os.path.join(model_path, "labeler_keys.pkl"), "wb") as f:
             pickle.dump(key_names, f)
+
+    _copy_file_or_tree(src=__file__, dst=model_code_path)
+    if code_paths is not None:
+        for code_path in code_paths:
+            _copy_file_or_tree(src=code_path, dst=model_code_path)
 
     mlflow_model = Model()
     mlflow_model.add_flavor(

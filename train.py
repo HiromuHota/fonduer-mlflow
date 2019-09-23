@@ -115,6 +115,10 @@ fonduer_model.save_model(
     fonduer_model=model,
     model_path="fonduer_model",
     conn_string=conn_string,
+    code_paths=[
+        "fonduerconfig.py",
+        "my_fonduer_model.py",
+    ],
     featurizer=featurizer,
     disc_model=disc_model,
 )
