@@ -69,29 +69,7 @@ Install spacy English model.
 
 ## Package a trained model
 
-A trained Fonduer model will be saved at `fonduer_model`.
-
-Let's see what's inside
-
-```bash
-(fonduer-mlflow) $ tree fonduer_model
-fonduer_model
-├── MLmodel
-├── best_model.pt
-├── code
-├── feature_keys.pkl
-└── fonduer_model.pkl
-```
-
-In order for this model to work, some dependent python files need to be saved at `fonduer_model/code`
-
-```bash
-$ cp fonduerconfig.py fonduer_model/code/
-$ cp fonduer_model.py fonduer_model/code/
-$ cp my_fonduer_model.py fonduer_model/code/
-```
-
-Now you'll get
+A trained Fonduer model will be saved at `fonduer_model` with the following contents.
 
 ```bash
 (fonduer-mlflow) $ tree fonduer_model
