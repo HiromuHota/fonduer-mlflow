@@ -202,7 +202,7 @@ def save_model(
     mlflow_model.add_flavor(
         pyfunc.FLAVOR_NAME,
         code=pyfunc.CODE,
-        loader_module="fonduer_model",
+        loader_module=__name__,
         conn_string=conn_string,
         parallel=parallel,
         model_type=model_type,
