@@ -67,9 +67,9 @@ Install spacy English model.
 (fonduer-mlflow) $ mlflow run ./ --no-conda -P conn_string=postgresql://localhost:5432/pob_presidents
 ```
 
-## Package a trained model
+## Check the trained model
 
-A trained Fonduer model will be saved at `fonduer_model` with the following contents.
+A trained Fonduer model will be saved at `./fonduer_model` with the following contents.
 
 ```bash
 (fonduer-mlflow) $ tree fonduer_model
@@ -84,7 +84,9 @@ fonduer_model
 └── fonduer_model.pkl
 ```
 
-This `fonduer_model` folder is portable and can be deployed anywhere as long as a PostgreSQL server is accesible.
+This `fonduer_model` folder, conforming to the MLflow Model, is portable and can be deployed anywhere as long as a PostgreSQL server is accesible.
+
+Note that the trained model can also be found under `./mlruns/<experiment-id>/<run-id>/artifacts`.
 
 It is worth noting that `fonduer_model.py` defines `FonduerModel` that is a custom MLflow model (see [here](https://www.mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#creating-custom-pyfunc-models) for details) for Fonduer.
 `FonduerModel` has implemented methods, e.g., `load_context`, and also not-implemented methods, e.g., `_get_mention_extractor`.
@@ -100,6 +102,12 @@ Let me show you one of the ways.
 
 ```
 $ mlflow models serve -m fonduer_model -w 1
+```
+
+or alternatively,
+
+```
+$ mlflow models serve -m runs:/<run-id>/fonduer_model -w 1
 ```
 
 If you send the following request to the API endpoint (`http://127.0.0.1:5000/invocations` in this case)

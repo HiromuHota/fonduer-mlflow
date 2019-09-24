@@ -1,6 +1,7 @@
 import logging
 import os
 import pickle
+import sys
 from typing import Iterable, List, Optional
 
 import torch
@@ -149,10 +150,38 @@ def _load_pyfunc(model_path: str):
     return _FonduerWrapper(fonduer_model, context)
 
 
+def log_model(
+    fonduer_model: FonduerModel,
+    artifact_path: str,
+    conn_string: str,
+    code_paths: Optional[List[str]] = None,
+    parallel: Optional[int] = 1,
+    model_type: Optional[str] = "discriminative",
+    labeler: Optional[Labeler] = None,
+    gen_models: Optional[List[LabelModel]] = None,
+    featurizer: Optional[Featurizer] = None,
+    disc_model: Optional[Classifier] = None,
+) -> None:
+    Model.log(
+        artifact_path=artifact_path,
+        flavor=sys.modules[__name__],
+        fonduer_model=fonduer_model,
+        conn_string=conn_string,
+        code_paths=code_paths,
+        parallel=parallel,
+        model_type=model_type,
+        labeler=labeler,
+        gen_models=gen_models,
+        featurizer=featurizer,
+        disc_model=disc_model
+    )
+
+
 def save_model(
     fonduer_model: FonduerModel,
-    model_path: str,
+    path: str,
     conn_string: str,
+    mlflow_model: Model = Model(),
     code_paths: Optional[List[str]] = None,
     parallel: Optional[int] = 1,
     model_type: Optional[str] = "discriminative",
@@ -164,8 +193,9 @@ def save_model(
     """Save a custom MLflow model to a path on the local file system.
 
     :param fonduer_model: the model to be saved.
-    :param model_path: the path on the local file system.
+    :param path: the path on the local file system.
     :param conn_string: the connection string.
+    :param mlflow_model: model configuration.
     :param code_paths: A list of local filesystem paths to Python file dependencies (or directories containing file dependencies). These files are prepended to the system path when the model is loaded.
     :param parallel: the number of parallelism.
     :param model_type: the model type, either "discriminative" or "generative", defaults to "discriminative".
@@ -174,23 +204,23 @@ def save_model(
     :param featurizer: a featurizer, defaults to None.
     :param disc_model: a discriminative model, defaults to None.
     """
-    os.makedirs(model_path)
-    model_code_path = os.path.join(model_path, pyfunc.CODE)
+    os.makedirs(path)
+    model_code_path = os.path.join(path, pyfunc.CODE)
     os.makedirs(model_code_path)
 
-    with open(os.path.join(model_path, "fonduer_model.pkl"), "wb") as f:
+    with open(os.path.join(path, "fonduer_model.pkl"), "wb") as f:
         pickle.dump(fonduer_model, f)
     if model_type == "discriminative":
         key_names = [key.name for key in featurizer.get_keys()]
-        with open(os.path.join(model_path, "feature_keys.pkl"), "wb") as f:
+        with open(os.path.join(path, "feature_keys.pkl"), "wb") as f:
             pickle.dump(key_names, f)
-        disc_model.save(model_file="best_model.pt", save_dir=model_path)
+        disc_model.save(model_file="best_model.pt", save_dir=path)
     else:
         for candidate_class, gen_model in zip(labeler.candidate_classes, gen_models):
-            gen_model.save(os.path.join(model_path, candidate_class.__name__ + ".pkl"))
+            gen_model.save(os.path.join(path, candidate_class.__name__ + ".pkl"))
 
         key_names = [key.name for key in labeler.get_keys()]
-        with open(os.path.join(model_path, "labeler_keys.pkl"), "wb") as f:
+        with open(os.path.join(path, "labeler_keys.pkl"), "wb") as f:
             pickle.dump(key_names, f)
 
     _copy_file_or_tree(src=__file__, dst=model_code_path)
@@ -198,7 +228,6 @@ def save_model(
         for code_path in code_paths:
             _copy_file_or_tree(src=code_path, dst=model_code_path)
 
-    mlflow_model = Model()
     mlflow_model.add_flavor(
         pyfunc.FLAVOR_NAME,
         code=pyfunc.CODE,
@@ -207,7 +236,7 @@ def save_model(
         parallel=parallel,
         model_type=model_type,
     )
-    mlflow_model.save(os.path.join(model_path, "MLmodel"))
+    mlflow_model.save(os.path.join(path, "MLmodel"))
 
 
 class _FonduerWrapper(object):
