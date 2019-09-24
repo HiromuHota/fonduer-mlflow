@@ -109,16 +109,26 @@ disc_model.train((train_cands[0], F_train[0]), train_marginals, n_epochs=10, lr=
 
 from my_fonduer_model import MyFonduerModel
 model = MyFonduerModel()
+code_paths = [
+    "fonduerconfig.py",
+    "my_fonduer_model.py",
+]
 
 import fonduer_model
 fonduer_model.save_model(
-    fonduer_model=model,
-    model_path="fonduer_model",
+    model,
+    "fonduer_model",
     conn_string=conn_string,
-    code_paths=[
-        "fonduerconfig.py",
-        "my_fonduer_model.py",
-    ],
+    code_paths=code_paths,
+    featurizer=featurizer,
+    disc_model=disc_model,
+)
+
+fonduer_model.log_model(
+    model,
+    "fonduer_model",
+    conn_string=conn_string,
+    code_paths=code_paths,
     featurizer=featurizer,
     disc_model=disc_model,
 )
