@@ -1,6 +1,7 @@
 import logging
 import os
 import pickle
+import sys
 from typing import Iterable, List, Optional
 
 import torch
@@ -147,6 +148,33 @@ def _load_pyfunc(model_path: str):
     context = PythonModelContext(artifacts=None)
     fonduer_model.load_context(context=context)
     return _FonduerWrapper(fonduer_model, context)
+
+
+def log_model(
+    fonduer_model: FonduerModel,
+    artifact_path: str,
+    conn_string: str,
+    code_paths: Optional[List[str]] = None,
+    parallel: Optional[int] = 1,
+    model_type: Optional[str] = "discriminative",
+    labeler: Optional[Labeler] = None,
+    gen_models: Optional[List[LabelModel]] = None,
+    featurizer: Optional[Featurizer] = None,
+    disc_model: Optional[Classifier] = None,
+) -> None:
+    Model.log(
+        artifact_path=artifact_path,
+        flavor=sys.modules[__name__],
+        fonduer_model=fonduer_model,
+        conn_string=conn_string,
+        code_paths=code_paths,
+        parallel=parallel,
+        model_type=model_type,
+        labeler=labeler,
+        gen_models=gen_models,
+        featurizer=featurizer,
+        disc_model=disc_model
+    )
 
 
 def save_model(
