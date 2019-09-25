@@ -36,4 +36,5 @@ jobs:
         args: exec postgres createdb -U `whoami` pob_presidents
     - name: Train a model
       run: |
-        mlflow run ./ -P conn_string=postgresql://localhost:5432/pob_presidents
+        ./download_data.sh
+        mlflow run ./ --no-conda -P conn_string=postgresql://localhost:5432/pob_presidents
