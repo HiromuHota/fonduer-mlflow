@@ -29,11 +29,7 @@ jobs:
     - name: Setup a database
       uses: actions/docker/cli@master
       with:
-        args: run --name postgres -e POSTGRES_USER=runner -d -p 5432:5432 postgres
-    - name: Create a database
-      uses: actions/docker/cli@master
-      with:
-        args: exec postgres createdb -U runner pob_presidents
+        args: run --name postgres -e POSTGRES_USER=runner -e POSTGRES_DB=pob_presidents -d -p 5432:5432 postgres
     - name: Train a model
       run: |
         ./download_data.sh
