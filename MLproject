@@ -1,6 +1,7 @@
 name: wiki
 
-conda_env: conda.yaml
+docker_env:
+  image: mlflow-docker-example
 
 entry_points:
   main:
