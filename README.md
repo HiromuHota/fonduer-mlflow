@@ -38,27 +38,20 @@ $ ./download_data.sh
 Deploy a PostgreSQL if you don't have one.
 
 ```
-$ docker run --name postgres -e POSTGRES_USER=ubuntu -d -p 5432:5432 postgres
+$ docker run --name postgres -e POSTGRES_USER=`whoami` -d -p 5432:5432 postgres
 ```
 
 Create a database.
 
 ```
-$ createdb pob_presidents
+$ docker exec postgres createdb -U `whoami` pob_presidents
 ```
 
-Create an anaconda environment and activate it.
+Create a conda environment and activate it.
 
 ```
 $ conda env create -f conda.yaml
 $ conda activate fonduer-mlflow
-```
-
-Install spacy English model.
-
-```
-(fonduer-mlflow) $ pip install git+https://github.com/HazyResearch/fonduer.git
-(fonduer-mlflow) $ python -m spacy download en
 ```
 
 ## Train a model
@@ -101,13 +94,13 @@ Let me show you one of the ways.
 ## Deploys the model as a local REST API server
 
 ```
-$ mlflow models serve -m fonduer_model -w 1
+(fonduer-mlflow) $ mlflow models serve -m fonduer_model -w 1
 ```
 
 or alternatively,
 
 ```
-$ mlflow models serve -m runs:/<run-id>/fonduer_model -w 1
+(fonduer-mlflow) $ mlflow models serve -m runs:/<run-id>/fonduer_model -w 1
 ```
 
 If you send the following request to the API endpoint (`http://127.0.0.1:5000/invocations` in this case)
