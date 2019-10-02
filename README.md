@@ -47,19 +47,25 @@ $ ./download_data.sh
 Deploy a PostgreSQL if you don't have one.
 
 ```
-$ docker run --name postgres -e POSTGRES_USER=`whoami` -d -p 5432:5432 postgres
+$ docker run --name postgres -e POSTGRES_USER=root -d -p 5432:5432 postgres
 ```
 
 Create a database.
 
 ```
-$ docker exec postgres createdb -U `whoami` pob_presidents
+$ docker exec postgres createdb -U root pob_presidents
+```
+
+Create a Docker environment.
+
+```
+$ docker build -t mlflow-docker-example .
 ```
 
 ## Train a model
 
 ```
-$ mlflow run ./ -P conn_string=postgresql://localhost:5432/pob_presidents
+$ mlflow run ./ -P conn_string=postgresql://host.docker.internal:5432/pob_presidents
 ```
 
 ## Check the trained model
