@@ -53,7 +53,7 @@ $ docker exec postgres createdb -U `whoami` pob_presidents
 ## Train a model
 
 ```
-(fonduer-mlflow) $ mlflow run ./ -P conn_string=postgresql://localhost:5432/pob_presidents
+$ mlflow run ./ -P conn_string=postgresql://localhost:5432/pob_presidents
 ```
 
 ## Check the trained model
@@ -61,7 +61,7 @@ $ docker exec postgres createdb -U `whoami` pob_presidents
 A trained Fonduer model will be saved at `./fonduer_model` with the following contents.
 
 ```bash
-(fonduer-mlflow) $ tree fonduer_model
+$ tree fonduer_model
 fonduer_model
 ├── MLmodel
 ├── code
@@ -84,13 +84,13 @@ Let me show you one of the ways.
 ## Deploys the model as a local REST API server
 
 ```
-(fonduer-mlflow) $ mlflow models serve -m fonduer_model -w 1
+$ mlflow models serve -m fonduer_model -w 1
 ```
 
 or alternatively,
 
 ```
-(fonduer-mlflow) $ mlflow models serve -m runs:/<run-id>/fonduer_model -w 1
+$ mlflow models serve -m runs:/<run-id>/fonduer_model -w 1
 ```
 
 If you send the following request to the API endpoint (`http://127.0.0.1:5000/invocations` in this case)
