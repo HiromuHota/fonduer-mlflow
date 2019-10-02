@@ -50,17 +50,10 @@ Create a database.
 $ docker exec postgres createdb -U `whoami` pob_presidents
 ```
 
-Create a conda environment and activate it.
-
-```
-$ conda env create -f conda.yaml
-$ conda activate fonduer-mlflow
-```
-
 ## Train a model
 
 ```
-(fonduer-mlflow) $ mlflow run ./ --no-conda -P conn_string=postgresql://localhost:5432/pob_presidents
+(fonduer-mlflow) $ mlflow run ./ -P conn_string=postgresql://localhost:5432/pob_presidents
 ```
 
 ## Check the trained model
