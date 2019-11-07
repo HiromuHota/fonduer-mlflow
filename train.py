@@ -70,18 +70,15 @@ featurizer = Featurizer(session, candidate_classes)
 featurizer.apply(split=0, train=True, parallelism=PARALLEL)
 F_train = featurizer.get_feature_matrices(train_cands)
 
-from wiki_table_utils import load_president_gold_labels
+from wiki_table_utils import gold
+from fonduer.supervision import Labeler
+from fonduer.supervision.models import GoldLabel
 
-gold_file = "data/president_tutorial_gold.csv"
-load_president_gold_labels(
-    session, candidate_classes, gold_file, annotator_name="gold"
-)
+labeler = Labeler(session, candidate_classes)
+labeler.apply(docs=train_docs, lfs=[[gold]], table=GoldLabel, train=True)
 
 from lfconfig import president_name_pob_lfs, TRUE
 
-from fonduer.supervision import Labeler
-
-labeler = Labeler(session, candidate_classes)
 labeler.apply(split=0, lfs=[president_name_pob_lfs], train=True, parallelism=PARALLEL)
 L_train = labeler.get_label_matrices(train_cands)
 
