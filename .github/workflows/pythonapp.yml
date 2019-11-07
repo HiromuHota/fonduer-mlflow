@@ -27,9 +27,8 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Setup a database
-      uses: actions/docker/cli@master
-      with:
-        args: run --name postgres -e POSTGRES_USER=runner -e POSTGRES_DB=pob_presidents -d -p 5432:5432 postgres
+      run:
+        docker run --name postgres -e POSTGRES_USER=runner -e POSTGRES_DB=pob_presidents -d -p 5432:5432 postgres
     - name: Train a model
       run: |
         ./download_data.sh
