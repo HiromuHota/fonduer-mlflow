@@ -4,8 +4,7 @@ import numpy as np
 
 from sqlalchemy.orm import Session
 from fonduer.parser import Parser
-from fonduer.parser.preprocessors import HTMLDocPreprocessor
-from fonduer.parser.models import Document
+from fonduer.parser.preprocessors import DocPreprocessor, HTMLDocPreprocessor
 from fonduer.candidates import MentionExtractor, CandidateExtractor
 from fonduer.candidates.models import Candidate
 
@@ -31,7 +30,7 @@ TRUE = 2
 
 
 class MyFonduerModel(FonduerModel):
-    def _get_doc_preprocessor(self, path: str) -> Iterable[Document]:
+    def _get_doc_preprocessor(self, path: str) -> DocPreprocessor:
         return HTMLDocPreprocessor(path)
 
     def _get_parser(self, session: Session) -> Parser:

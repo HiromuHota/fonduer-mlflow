@@ -2,7 +2,7 @@ import logging
 import os
 import pickle
 import sys
-from typing import Iterable, List, Optional
+from typing import List, Optional
 
 import torch
 from mlflow import pyfunc
@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from fonduer import Meta, init_logging
 from fonduer.parser import Parser
-from fonduer.parser.models import Document
+from fonduer.parser.preprocessors import DocPreprocessor
 from fonduer.candidates import MentionExtractor, CandidateExtractor
 from fonduer.features import Featurizer
 from fonduer.learning import LogisticRegression
@@ -35,7 +35,7 @@ class FonduerModel(pyfunc.PythonModel):
     A custom MLflow model for Fonduer.
     """
 
-    def _get_doc_preprocessor(self, path: str) -> Iterable[Document]:
+    def _get_doc_preprocessor(self, path: str) -> DocPreprocessor:
         raise NotImplementedError()
 
     def _get_parser(self, session: Session) -> Parser:
