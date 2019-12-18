@@ -6,4 +6,4 @@ dependencies:
   - pip:
     - torch==1.1.0
     - mlflow==1.4.0
-    - git+https://github.com/HazyResearch/fonduer@5016cd0d15fe62ce2af3808b34968daf9690b046
+    - git+https://github.com/HazyResearch/fonduer@ace413d0a687f8e9aa817389c8576d77c02baa59

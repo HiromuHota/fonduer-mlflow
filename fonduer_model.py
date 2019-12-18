@@ -4,7 +4,6 @@ import pickle
 import sys
 from typing import List, Optional
 
-import torch
 from mlflow import pyfunc
 from mlflow.models import Model
 from mlflow.pyfunc.model import PythonModelContext
@@ -13,13 +12,12 @@ from mlflow.utils.model_utils import _get_flavor_configuration
 from pandas import DataFrame
 from sqlalchemy.orm import Session
 
+from emmental.model import EmmentalModel
 from fonduer import Meta, init_logging
 from fonduer.parser import Parser
 from fonduer.parser.preprocessors import DocPreprocessor
 from fonduer.candidates import MentionExtractor, CandidateExtractor
 from fonduer.features import Featurizer
-from fonduer.learning import LogisticRegression
-from fonduer.learning.classifier import Classifier
 from fonduer.supervision import Labeler
 from snorkel.labeling import LabelModel
 
@@ -80,15 +78,8 @@ class FonduerModel(pyfunc.PythonModel):
             self.featurizer.drop_keys(key_names)
             self.featurizer.upsert_keys(key_names)
 
-            disc_model = LogisticRegression()
-
-            # Workaround to https://github.com/HazyResearch/fonduer/issues/208
-            checkpoint = torch.load(os.path.join(self.model_path, "best_model.pt"))
-            disc_model.settings = checkpoint["config"]
-            disc_model.cardinality = checkpoint["cardinality"]
-            disc_model._build_model()
-
-            disc_model.load(model_file="best_model.pt", save_dir=self.model_path)
+            disc_model = EmmentalModel()
+            disc_model.load(model_path=os.path.join(self.model_path, "disc_model.pkl"))
             self.disc_model = disc_model
         else:
             self.labeler = Labeler(session, candidate_classes)
@@ -160,7 +151,7 @@ def log_model(
     labeler: Optional[Labeler] = None,
     gen_models: Optional[List[LabelModel]] = None,
     featurizer: Optional[Featurizer] = None,
-    disc_model: Optional[Classifier] = None,
+    disc_model: Optional[EmmentalModel] = None,
 ) -> None:
     Model.log(
         artifact_path=artifact_path,
@@ -188,7 +179,7 @@ def save_model(
     labeler: Optional[Labeler] = None,
     gen_models: Optional[List[LabelModel]] = None,
     featurizer: Optional[Featurizer] = None,
-    disc_model: Optional[Classifier] = None,
+    disc_model: Optional[EmmentalModel] = None,
 ) -> None:
     """Save a custom MLflow model to a path on the local file system.
 
@@ -214,7 +205,7 @@ def save_model(
         key_names = [key.name for key in featurizer.get_keys()]
         with open(os.path.join(path, "feature_keys.pkl"), "wb") as f:
             pickle.dump(key_names, f)
-        disc_model.save(model_file="best_model.pt", save_dir=path)
+        disc_model.save(model_path=os.path.join(path, "disc_model.pkl"))
     else:
         for candidate_class, gen_model in zip(labeler.candidate_classes, gen_models):
             gen_model.save(os.path.join(path, candidate_class.__name__ + ".pkl"))

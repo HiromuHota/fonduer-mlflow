@@ -91,10 +91,86 @@ gen_model.fit(L_train[0], n_epochs=500)
 
 train_marginals = gen_model.predict_proba(L_train[0])
 
-from fonduer.learning import LogisticRegression
+ATTRIBUTE = "wiki"
 
-disc_model = LogisticRegression()
-disc_model.train((train_cands[0], F_train[0]), train_marginals, n_epochs=10, lr=0.001)
+import numpy as np
+import emmental
+from emmental.data import EmmentalDataLoader
+from emmental.learner import EmmentalLearner
+from emmental.model import EmmentalModel
+from emmental.modules.embedding_module import EmbeddingModule
+from fonduer.learning.dataset import FonduerDataset
+from fonduer.learning.task import create_task
+from fonduer.learning.utils import collect_word_counter
+# Collect word counter
+word_counter = collect_word_counter(train_cands)
+
+emmental.init(Meta.log_path)
+
+# Training config
+config = {
+    "meta_config": {"verbose": False},
+    "model_config": {"model_path": None, "device": 0, "dataparallel": False},
+    "learner_config": {
+        "n_epochs": 5,
+        "optimizer_config": {"lr": 0.001, "l2": 0.0},
+        "task_scheduler": "round_robin",
+    },
+    "logging_config": {
+        "evaluation_freq": 1,
+        "counter_unit": "epoch",
+        "checkpointing": False,
+        "checkpointer_config": {
+            "checkpoint_metric": {f"{ATTRIBUTE}/{ATTRIBUTE}/train/loss": "min"},
+            "checkpoint_freq": 1,
+            "checkpoint_runway": 2,
+            "clear_intermediate_checkpoints": True,
+            "clear_all_checkpoints": True,
+        },
+    },
+}
+emmental.Meta.update_config(config=config)
+
+# Generate word embedding module
+arity = 2
+# Geneate special tokens
+specials = []
+for i in range(arity):
+    specials += [f"~~[[{i}", f"{i}]]~~"]
+
+emb_layer = EmbeddingModule(
+    word_counter=word_counter, word_dim=300, specials=specials
+)
+
+diffs = train_marginals.max(axis=1) - train_marginals.min(axis=1)
+train_idxs = np.where(diffs > 1e-6)[0]
+
+train_dataloader = EmmentalDataLoader(
+    task_to_label_dict={ATTRIBUTE: "labels"},
+    dataset=FonduerDataset(
+        ATTRIBUTE,
+        train_cands[0],
+        F_train[0],
+        emb_layer.word2id,
+        train_marginals,
+        train_idxs,
+    ),
+    split="train",
+    batch_size=100,
+    shuffle=True,
+)
+
+tasks = create_task(
+    ATTRIBUTE, 2, F_train[0].shape[1], 2, emb_layer, model="LogisticRegression"
+)
+
+disc_model = EmmentalModel(name=f"{ATTRIBUTE}_task")
+
+for task in tasks:
+    disc_model.add_task(task)
+
+emmental_learner = EmmentalLearner()
+emmental_learner.learn(disc_model, [train_dataloader])
 
 from my_fonduer_model import MyFonduerModel
 model = MyFonduerModel()
