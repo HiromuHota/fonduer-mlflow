@@ -164,7 +164,7 @@ tasks = create_task(
     ATTRIBUTE, 2, F_train[0].shape[1], 2, emb_layer, model="LogisticRegression"
 )
 
-disc_model = EmmentalModel(name=f"{ATTRIBUTE}_task")
+disc_model = EmmentalModel()
 
 for task in tasks:
     disc_model.add_task(task)

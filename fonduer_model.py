@@ -88,7 +88,7 @@ class FonduerModel(pyfunc.PythonModel):
             self.featurizer.drop_keys(key_names)
             self.featurizer.upsert_keys(key_names)
 
-            disc_model = EmmentalModel(name=f"wiki_task")
+            disc_model = EmmentalModel()
             for task in self.tasks:
                 disc_model.add_task(task)
             disc_model.load(model_path=os.path.join(self.model_path, "disc_model.pkl"))
