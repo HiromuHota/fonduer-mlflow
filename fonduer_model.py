@@ -21,7 +21,7 @@ from fonduer.features import Featurizer
 from fonduer.learning import LogisticRegression
 from fonduer.learning.classifier import Classifier
 from fonduer.supervision import Labeler
-from metal.label_model import LabelModel
+from snorkel.labeling import LabelModel
 
 logger = logging.getLogger(__name__)
 

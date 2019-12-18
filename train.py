@@ -84,18 +84,10 @@ L_train = labeler.get_label_matrices(train_cands)
 
 L_gold_train = labeler.get_gold_labels(train_cands, annotator="gold")
 
-from metal import analysis
+from snorkel.labeling import LabelModel
 
-analysis.lf_summary(
-    L_train[0],
-    lf_names=labeler.get_keys(),
-    Y=L_gold_train[0].todense().reshape(-1).tolist()[0],
-)
-
-from metal.label_model import LabelModel
-
-gen_model = LabelModel(k=2)
-gen_model.train_model(L_train[0], n_epochs=500, verbose=False)
+gen_model = LabelModel(verbose=False)
+gen_model.fit(L_train[0], n_epochs=500)
 
 train_marginals = gen_model.predict_proba(L_train[0])
 

@@ -24,9 +24,9 @@ def get_unique_entity_relations(candidates: Iterable[Candidate]) -> Set[Candidat
     return unique_entity_relation
 
 
-ABSTAIN = 0
-FALSE = 1
-TRUE = 2
+ABSTAIN = -1
+FALSE = 0
+TRUE = 1
 
 
 class MyFonduerModel(FonduerModel):

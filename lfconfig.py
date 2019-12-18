@@ -1,9 +1,9 @@
 from fonduer.utils.data_model_utils import *
 import re
 
-ABSTAIN = 0
-FALSE = 1
-TRUE = 2
+ABSTAIN = -1
+FALSE = 0
+TRUE = 1
 
 
 def LF_place_of_birth_has_link(c):

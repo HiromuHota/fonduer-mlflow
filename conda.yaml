@@ -6,4 +6,4 @@ dependencies:
   - pip:
     - torch==1.1.0
     - mlflow==1.4.0
-    - fonduer==0.7.1
+    - git+https://github.com/HazyResearch/fonduer@5016cd0d15fe62ce2af3808b34968daf9690b046
