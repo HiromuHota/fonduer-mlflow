@@ -2,7 +2,7 @@ import logging
 import os
 import pickle
 import sys
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from mlflow import pyfunc
 from mlflow.models import Model
@@ -12,6 +12,7 @@ from mlflow.utils.model_utils import _get_flavor_configuration
 from pandas import DataFrame
 from sqlalchemy.orm import Session
 
+import emmental
 from emmental.model import EmmentalModel
 from fonduer import Meta, init_logging
 from fonduer.parser import Parser
@@ -61,6 +62,7 @@ class FonduerModel(pyfunc.PythonModel):
             raise RuntimeError("conn_string is missing from MLmodel file.")
         self.parallel = pyfunc_conf.get(PARALLEL, 1)
         session = Meta.init(conn_string).Session()
+        emmental.init(Meta.log_path)
 
         logger.info("Getting parser")
         self.corpus_parser = self._get_parser(session)
@@ -70,6 +72,14 @@ class FonduerModel(pyfunc.PythonModel):
         self.candidate_extractor = self._get_candidate_extractor(session)
         candidate_classes = self.candidate_extractor.candidate_classes
 
+        # Load other variables
+        model_data_path = os.path.join(self.model_path, pyfunc.DATA)
+        for file in os.listdir(model_data_path):
+            with open(os.path.join(model_data_path, file), "rb") as f:
+                name = file.split(".")[0]
+                logger.info(f"Loading {name}")
+                exec("self." + name + " = pickle.load(f)")
+
         self.model_type = pyfunc_conf.get(MODEL_TYPE, "discriminative")
         if self.model_type == "discriminative":
             self.featurizer = Featurizer(session, candidate_classes)
@@ -78,7 +88,9 @@ class FonduerModel(pyfunc.PythonModel):
             self.featurizer.drop_keys(key_names)
             self.featurizer.upsert_keys(key_names)
 
-            disc_model = EmmentalModel()
+            disc_model = EmmentalModel(name=f"wiki_task")
+            for task in self.tasks:
+                disc_model.add_task(task)
             disc_model.load(model_path=os.path.join(self.model_path, "disc_model.pkl"))
             self.disc_model = disc_model
         else:
@@ -152,6 +164,7 @@ def log_model(
     gen_models: Optional[List[LabelModel]] = None,
     featurizer: Optional[Featurizer] = None,
     disc_model: Optional[EmmentalModel] = None,
+    **kwargs: Any,
 ) -> None:
     Model.log(
         artifact_path=artifact_path,
@@ -164,7 +177,8 @@ def log_model(
         labeler=labeler,
         gen_models=gen_models,
         featurizer=featurizer,
-        disc_model=disc_model
+        disc_model=disc_model,
+        **kwargs,
     )
 
 
@@ -180,6 +194,7 @@ def save_model(
     gen_models: Optional[List[LabelModel]] = None,
     featurizer: Optional[Featurizer] = None,
     disc_model: Optional[EmmentalModel] = None,
+    **kwargs: Any,
 ) -> None:
     """Save a custom MLflow model to a path on the local file system.
 
@@ -198,6 +213,8 @@ def save_model(
     os.makedirs(path)
     model_code_path = os.path.join(path, pyfunc.CODE)
     os.makedirs(model_code_path)
+    model_data_path = os.path.join(path, pyfunc.DATA)
+    os.makedirs(model_data_path)
 
     with open(os.path.join(path, "fonduer_model.pkl"), "wb") as f:
         pickle.dump(fonduer_model, f)
@@ -218,6 +235,11 @@ def save_model(
     if code_paths is not None:
         for code_path in code_paths:
             _copy_file_or_tree(src=code_path, dst=model_code_path)
+
+    # Save other picklable variables
+    for key, value in kwargs.items():
+        with open(os.path.join(model_data_path, key + ".pkl"), "wb") as f:
+            pickle.dump(value, f)
 
     mlflow_model.add_flavor(
         pyfunc.FLAVOR_NAME,

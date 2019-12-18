@@ -3,10 +3,14 @@ from pandas import DataFrame
 import numpy as np
 
 from sqlalchemy.orm import Session
+from emmental.data import EmmentalDataLoader
+from emmental.modules.embedding_module import EmbeddingModule
 from fonduer.parser import Parser
 from fonduer.parser.preprocessors import DocPreprocessor, HTMLDocPreprocessor
 from fonduer.candidates import MentionExtractor, CandidateExtractor
 from fonduer.candidates.models import Candidate
+from fonduer.learning.dataset import FonduerDataset
+from fonduer.learning.utils import collect_word_counter
 
 from fonduer_model import FonduerModel
 from fonduerconfig import matchers, mention_classes, mention_spaces, candidate_classes
@@ -53,8 +57,21 @@ class MyFonduerModel(FonduerModel):
         self.featurizer.apply(test_docs, clear=False)
         F_test = self.featurizer.get_feature_matrices(test_cands)
 
-        test_score = self.disc_model.predict((test_cands[0], F_test[0]), b=0.6, pos_label=TRUE)
-        true_preds = [test_cands[0][_] for _ in np.nditer(np.where(test_score == TRUE))]
+        # Dataloader for test
+        ATTRIBUTE = "wiki"
+        test_dataloader = EmmentalDataLoader(
+            task_to_label_dict={ATTRIBUTE: "labels"},
+            dataset=FonduerDataset(
+                ATTRIBUTE, test_cands[0], F_test[0], self.emb_layer.word2id, 2
+            ),
+            split="test",
+            batch_size=100,
+            shuffle=False,
+        )
+
+        test_preds = self.disc_model.predict(test_dataloader, return_preds=True)
+        positive = np.where(np.array(test_preds["probs"][ATTRIBUTE])[:, TRUE] > 0.6)
+        true_preds = [test_cands[0][_] for _ in positive[0]]
 
         df = DataFrame()
         for entity_relation in get_unique_entity_relations(true_preds):
