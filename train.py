@@ -164,7 +164,6 @@ fonduer_model.save_model(
     featurizer=featurizer,
     disc_model=disc_model,
     emb_layer=emb_layer,
-    tasks=tasks,
 )
 
 fonduer_model.log_model(
@@ -175,5 +174,4 @@ fonduer_model.log_model(
     featurizer=featurizer,
     disc_model=disc_model,
     emb_layer=emb_layer,
-    tasks=tasks,
 )

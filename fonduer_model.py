@@ -11,6 +11,7 @@ from mlflow.utils.file_utils import _copy_file_or_tree
 from mlflow.utils.model_utils import _get_flavor_configuration
 from pandas import DataFrame
 from sqlalchemy.orm import Session
+import torch
 
 import emmental
 from emmental.model import EmmentalModel
@@ -88,11 +89,7 @@ class FonduerModel(pyfunc.PythonModel):
             self.featurizer.drop_keys(key_names)
             self.featurizer.upsert_keys(key_names)
 
-            disc_model = EmmentalModel()
-            for task in self.tasks:
-                disc_model.add_task(task)
-            disc_model.load(model_path=os.path.join(self.model_path, "disc_model.pkl"))
-            self.disc_model = disc_model
+            self.disc_model = torch.load(os.path.join(self.model_path, "disc_model.pkl"))
         else:
             self.labeler = Labeler(session, candidate_classes)
             with open(os.path.join(self.model_path, "labeler_keys.pkl"), "rb") as f:
@@ -222,7 +219,7 @@ def save_model(
         key_names = [key.name for key in featurizer.get_keys()]
         with open(os.path.join(path, "feature_keys.pkl"), "wb") as f:
             pickle.dump(key_names, f)
-        disc_model.save(model_path=os.path.join(path, "disc_model.pkl"))
+        torch.save(disc_model, os.path.join(path, "disc_model.pkl"))
     else:
         for candidate_class, gen_model in zip(labeler.candidate_classes, gen_models):
             gen_model.save(os.path.join(path, candidate_class.__name__ + ".pkl"))
