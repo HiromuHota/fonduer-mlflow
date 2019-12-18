@@ -107,30 +107,6 @@ word_counter = collect_word_counter(train_cands)
 
 emmental.init(Meta.log_path)
 
-# Training config
-config = {
-    "meta_config": {"verbose": False},
-    "model_config": {"model_path": None, "device": 0, "dataparallel": False},
-    "learner_config": {
-        "n_epochs": 5,
-        "optimizer_config": {"lr": 0.001, "l2": 0.0},
-        "task_scheduler": "round_robin",
-    },
-    "logging_config": {
-        "evaluation_freq": 1,
-        "counter_unit": "epoch",
-        "checkpointing": False,
-        "checkpointer_config": {
-            "checkpoint_metric": {f"{ATTRIBUTE}/{ATTRIBUTE}/train/loss": "min"},
-            "checkpoint_freq": 1,
-            "checkpoint_runway": 2,
-            "clear_intermediate_checkpoints": True,
-            "clear_all_checkpoints": True,
-        },
-    },
-}
-emmental.Meta.update_config(config=config)
-
 # Generate word embedding module
 arity = 2
 # Geneate special tokens
