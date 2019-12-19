@@ -4,7 +4,6 @@ import numpy as np
 
 from sqlalchemy.orm import Session
 from emmental.data import EmmentalDataLoader
-from emmental.modules.embedding_module import EmbeddingModule
 from fonduer.parser import Parser
 from fonduer.parser.preprocessors import DocPreprocessor, HTMLDocPreprocessor
 from fonduer.candidates import MentionExtractor, CandidateExtractor
@@ -62,7 +61,7 @@ class MyFonduerModel(FonduerModel):
         test_dataloader = EmmentalDataLoader(
             task_to_label_dict={ATTRIBUTE: "labels"},
             dataset=FonduerDataset(
-                ATTRIBUTE, test_cands[0], F_test[0], self.emb_layer.word2id, 2
+                ATTRIBUTE, test_cands[0], F_test[0], self.word2id, 2
             ),
             split="test",
             batch_size=100,

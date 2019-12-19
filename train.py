@@ -163,7 +163,7 @@ fonduer_model.save_model(
     code_paths=code_paths,
     featurizer=featurizer,
     disc_model=disc_model,
-    emb_layer=emb_layer,
+    word2id=emb_layer.word2id,
 )
 
 fonduer_model.log_model(
@@ -173,5 +173,5 @@ fonduer_model.log_model(
     code_paths=code_paths,
     featurizer=featurizer,
     disc_model=disc_model,
-    emb_layer=emb_layer,
+    word2id=emb_layer.word2id,
 )
