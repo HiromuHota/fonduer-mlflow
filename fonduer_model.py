@@ -2,7 +2,7 @@ import logging
 import os
 import pickle
 import sys
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from mlflow import pyfunc
 from mlflow.models import Model
@@ -73,14 +73,6 @@ class FonduerModel(pyfunc.PythonModel):
         self.candidate_extractor = self._get_candidate_extractor(session)
         candidate_classes = self.candidate_extractor.candidate_classes
 
-        # Load other variables
-        model_data_path = os.path.join(self.model_path, pyfunc.DATA)
-        for file in os.listdir(model_data_path):
-            with open(os.path.join(model_data_path, file), "rb") as f:
-                name = file.split(".")[0]
-                logger.info(f"Loading {name}")
-                exec("self." + name + " = pickle.load(f)")
-
         self.model_type = pyfunc_conf.get(MODEL_TYPE, "discriminative")
         if self.model_type == "discriminative":
             self.featurizer = Featurizer(session, candidate_classes)
@@ -90,6 +82,10 @@ class FonduerModel(pyfunc.PythonModel):
             self.featurizer.upsert_keys(key_names)
 
             self.disc_model = torch.load(os.path.join(self.model_path, "disc_model.pkl"))
+
+            with open(os.path.join(self.model_path, "word2id.pkl"), "rb") as f:
+                self.word2id = pickle.load(f)
+
         else:
             self.labeler = Labeler(session, candidate_classes)
             with open(os.path.join(self.model_path, "labeler_keys.pkl"), "rb") as f:
@@ -161,7 +157,7 @@ def log_model(
     gen_models: Optional[List[LabelModel]] = None,
     featurizer: Optional[Featurizer] = None,
     disc_model: Optional[EmmentalModel] = None,
-    **kwargs: Any,
+    word2id: Optional[Dict] = None,
 ) -> None:
     Model.log(
         artifact_path=artifact_path,
@@ -175,7 +171,7 @@ def log_model(
         gen_models=gen_models,
         featurizer=featurizer,
         disc_model=disc_model,
-        **kwargs,
+        word2id=word2id,
     )
 
 
@@ -191,7 +187,7 @@ def save_model(
     gen_models: Optional[List[LabelModel]] = None,
     featurizer: Optional[Featurizer] = None,
     disc_model: Optional[EmmentalModel] = None,
-    **kwargs: Any,
+    word2id: Optional[Dict] = None,
 ) -> None:
     """Save a custom MLflow model to a path on the local file system.
 
@@ -206,12 +202,11 @@ def save_model(
     :param gen_models: a list of generative models, defaults to None.
     :param featurizer: a featurizer, defaults to None.
     :param disc_model: a discriminative model, defaults to None.
+    :param word2id: a word embedding map.
     """
     os.makedirs(path)
     model_code_path = os.path.join(path, pyfunc.CODE)
     os.makedirs(model_code_path)
-    model_data_path = os.path.join(path, pyfunc.DATA)
-    os.makedirs(model_data_path)
 
     with open(os.path.join(path, "fonduer_model.pkl"), "wb") as f:
         pickle.dump(fonduer_model, f)
@@ -219,7 +214,11 @@ def save_model(
         key_names = [key.name for key in featurizer.get_keys()]
         with open(os.path.join(path, "feature_keys.pkl"), "wb") as f:
             pickle.dump(key_names, f)
+
         torch.save(disc_model, os.path.join(path, "disc_model.pkl"))
+
+        with open(os.path.join(path, "word2id.pkl"), "wb") as f:
+            pickle.dump(word2id, f)
     else:
         for candidate_class, gen_model in zip(labeler.candidate_classes, gen_models):
             gen_model.save(os.path.join(path, candidate_class.__name__ + ".pkl"))
@@ -232,11 +231,6 @@ def save_model(
     if code_paths is not None:
         for code_path in code_paths:
             _copy_file_or_tree(src=code_path, dst=model_code_path)
-
-    # Save other picklable variables
-    for key, value in kwargs.items():
-        with open(os.path.join(model_data_path, key + ".pkl"), "wb") as f:
-            pickle.dump(value, f)
 
     mlflow_model.add_flavor(
         pyfunc.FLAVOR_NAME,
