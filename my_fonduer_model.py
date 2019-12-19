@@ -9,7 +9,6 @@ from fonduer.parser.preprocessors import DocPreprocessor, HTMLDocPreprocessor
 from fonduer.candidates import MentionExtractor, CandidateExtractor
 from fonduer.candidates.models import Candidate
 from fonduer.learning.dataset import FonduerDataset
-from fonduer.learning.utils import collect_word_counter
 
 from fonduer_model import FonduerModel
 from fonduerconfig import matchers, mention_classes, mention_spaces, candidate_classes

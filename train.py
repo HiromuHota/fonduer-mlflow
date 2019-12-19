@@ -64,7 +64,6 @@ print(
 )
 
 from fonduer.features import Featurizer
-import pickle
 
 featurizer = Featurizer(session, candidate_classes)
 featurizer.apply(split=0, train=True, parallelism=PARALLEL)
@@ -77,7 +76,7 @@ from fonduer.supervision.models import GoldLabel
 labeler = Labeler(session, candidate_classes)
 labeler.apply(docs=train_docs, lfs=[[gold]], table=GoldLabel, train=True)
 
-from lfconfig import president_name_pob_lfs, TRUE
+from lfconfig import president_name_pob_lfs
 
 labeler.apply(split=0, lfs=[president_name_pob_lfs], train=True, parallelism=PARALLEL)
 L_train = labeler.get_label_matrices(train_cands)
