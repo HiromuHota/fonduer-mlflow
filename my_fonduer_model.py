@@ -2,11 +2,11 @@ from typing import Iterable, Set, Tuple
 from pandas import DataFrame
 import numpy as np
 
-from sqlalchemy.orm import Session
 from emmental.data import EmmentalDataLoader
-from fonduer.parser import Parser
+from fonduer.parser.parser import ParserUDF
 from fonduer.parser.preprocessors import DocPreprocessor, HTMLDocPreprocessor
-from fonduer.candidates import MentionExtractor, CandidateExtractor
+from fonduer.candidates.candidates import CandidateExtractorUDF
+from fonduer.candidates.mentions import MentionExtractorUDF
 from fonduer.candidates.models import Candidate
 from fonduer.learning.dataset import FonduerDataset
 
@@ -35,17 +35,16 @@ class MyFonduerModel(FonduerModel):
     def _get_doc_preprocessor(self, path: str) -> DocPreprocessor:
         return HTMLDocPreprocessor(path)
 
-    def _get_parser(self, session: Session) -> Parser:
-        return Parser(session, structural=True, lingual=True)
+    def _get_parser(self) -> ParserUDF:
+        return ParserUDF(structural=True, lingual=True)
 
-    def _get_mention_extractor(self, session: Session) -> MentionExtractor:
-        return MentionExtractor(
-            session,
+    def _get_mention_extractor(self) -> MentionExtractorUDF:
+        return MentionExtractorUDF(
             mention_classes, mention_spaces, matchers
         )
 
-    def _get_candidate_extractor(self, session: Session) -> CandidateExtractor:
-        return CandidateExtractor(session, candidate_classes)
+    def _get_candidate_extractor(self) -> CandidateExtractorUDF:
+        return CandidateExtractorUDF(candidate_classes)
 
     def _classify(self) -> DataFrame:
         test_docs = self.corpus_parser.get_last_documents()

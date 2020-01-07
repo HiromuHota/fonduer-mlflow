@@ -158,7 +158,6 @@ import fonduer_model
 fonduer_model.save_model(
     model,
     "fonduer_model",
-    conn_string=conn_string,
     code_paths=code_paths,
     featurizer=featurizer,
     disc_model=disc_model,
@@ -168,7 +167,6 @@ fonduer_model.save_model(
 fonduer_model.log_model(
     model,
     "fonduer_model",
-    conn_string=conn_string,
     code_paths=code_paths,
     featurizer=featurizer,
     disc_model=disc_model,

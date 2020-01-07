@@ -10,22 +10,21 @@ from mlflow.pyfunc.model import PythonModelContext
 from mlflow.utils.file_utils import _copy_file_or_tree
 from mlflow.utils.model_utils import _get_flavor_configuration
 from pandas import DataFrame
-from sqlalchemy.orm import Session
 import torch
 
 import emmental
 from emmental.model import EmmentalModel
 from fonduer import Meta, init_logging
-from fonduer.parser import Parser
+from fonduer.parser.parser import ParserUDF
 from fonduer.parser.preprocessors import DocPreprocessor
-from fonduer.candidates import MentionExtractor, CandidateExtractor
-from fonduer.features import Featurizer
-from fonduer.supervision import Labeler
+from fonduer.candidates.candidates import CandidateExtractorUDF
+from fonduer.candidates.mentions import MentionExtractorUDF
+from fonduer.features.featurizer import Featurizer, FeaturizerUDF
+from fonduer.supervision.labeler import Labeler, LabelerUDF
 from snorkel.labeling import LabelModel
 
 logger = logging.getLogger(__name__)
 
-CONN_STRING = "conn_string"
 MODEL_TYPE = "model_type"
 PARALLEL = "parallel"
 
@@ -38,13 +37,13 @@ class FonduerModel(pyfunc.PythonModel):
     def _get_doc_preprocessor(self, path: str) -> DocPreprocessor:
         raise NotImplementedError()
 
-    def _get_parser(self, session: Session) -> Parser:
+    def _get_parser(self) -> ParserUDF:
         raise NotImplementedError()
 
-    def _get_mention_extractor(self, session: Session) -> MentionExtractor:
+    def _get_mention_extractor(self) -> MentionExtractorUDF:
         raise NotImplementedError()
 
-    def _get_candidate_extractor(self, session: Session) -> CandidateExtractor:
+    def _get_candidate_extractor(self) -> CandidateExtractorUDF:
         raise NotImplementedError()
 
     def _classify(self) -> DataFrame:
@@ -58,24 +57,20 @@ class FonduerModel(pyfunc.PythonModel):
         pyfunc_conf = _get_flavor_configuration(
             model_path=self.model_path, flavor_name=pyfunc.FLAVOR_NAME
         )
-        conn_string = pyfunc_conf.get(CONN_STRING, None)
-        if conn_string is None:
-            raise RuntimeError("conn_string is missing from MLmodel file.")
         self.parallel = pyfunc_conf.get(PARALLEL, 1)
-        session = Meta.init(conn_string).Session()
         emmental.init(Meta.log_path)
 
         logger.info("Getting parser")
-        self.corpus_parser = self._get_parser(session)
+        self.corpus_parser = self._get_parser()
         logger.info("Getting mention extractor")
-        self.mention_extractor = self._get_mention_extractor(session)
+        self.mention_extractor = self._get_mention_extractor()
         logger.info("Getting candidate extractor")
-        self.candidate_extractor = self._get_candidate_extractor(session)
+        self.candidate_extractor = self._get_candidate_extractor()
         candidate_classes = self.candidate_extractor.candidate_classes
 
         self.model_type = pyfunc_conf.get(MODEL_TYPE, "discriminative")
         if self.model_type == "discriminative":
-            self.featurizer = Featurizer(session, candidate_classes)
+            self.featurizer = FeaturizerUDF(candidate_classes)
             with open(os.path.join(self.model_path, "feature_keys.pkl"), "rb") as f:
                 key_names = pickle.load(f)
             self.featurizer.drop_keys(key_names)
@@ -87,11 +82,9 @@ class FonduerModel(pyfunc.PythonModel):
                 self.word2id = pickle.load(f)
 
         else:
-            self.labeler = Labeler(session, candidate_classes)
+            self.labeler = LabelerUDF(candidate_classes)
             with open(os.path.join(self.model_path, "labeler_keys.pkl"), "rb") as f:
                 key_names = pickle.load(f)
-            self.labeler.drop_keys(key_names)
-            self.labeler.upsert_keys(key_names)
 
             self.gen_models = [
                 LabelModel.load(os.path.join(self.model_path, _.__name__ + ".pkl"))
@@ -149,7 +142,6 @@ def _load_pyfunc(model_path: str):
 def log_model(
     fonduer_model: FonduerModel,
     artifact_path: str,
-    conn_string: str,
     code_paths: Optional[List[str]] = None,
     parallel: Optional[int] = 1,
     model_type: Optional[str] = "discriminative",
@@ -163,7 +155,6 @@ def log_model(
         artifact_path=artifact_path,
         flavor=sys.modules[__name__],
         fonduer_model=fonduer_model,
-        conn_string=conn_string,
         code_paths=code_paths,
         parallel=parallel,
         model_type=model_type,
@@ -178,7 +169,6 @@ def log_model(
 def save_model(
     fonduer_model: FonduerModel,
     path: str,
-    conn_string: str,
     mlflow_model: Model = Model(),
     code_paths: Optional[List[str]] = None,
     parallel: Optional[int] = 1,
@@ -236,7 +226,6 @@ def save_model(
         pyfunc.FLAVOR_NAME,
         code=pyfunc.CODE,
         loader_module=__name__,
-        conn_string=conn_string,
         parallel=parallel,
         model_type=model_type,
     )
