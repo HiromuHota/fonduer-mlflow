@@ -19,6 +19,7 @@ from fonduer.parser.parser import ParserUDF
 from fonduer.parser.preprocessors import DocPreprocessor
 from fonduer.candidates.candidates import CandidateExtractorUDF
 from fonduer.candidates.mentions import MentionExtractorUDF
+from fonduer.features.feature_extractors import FeatureExtractor
 from fonduer.features.featurizer import Featurizer, FeaturizerUDF
 from fonduer.supervision.labeler import Labeler, LabelerUDF
 from snorkel.labeling import LabelModel
@@ -26,7 +27,6 @@ from snorkel.labeling import LabelModel
 logger = logging.getLogger(__name__)
 
 MODEL_TYPE = "model_type"
-PARALLEL = "parallel"
 
 
 class FonduerModel(pyfunc.PythonModel):
@@ -57,8 +57,7 @@ class FonduerModel(pyfunc.PythonModel):
         pyfunc_conf = _get_flavor_configuration(
             model_path=self.model_path, flavor_name=pyfunc.FLAVOR_NAME
         )
-        self.parallel = pyfunc_conf.get(PARALLEL, 1)
-        emmental.init(Meta.log_path)
+        emmental.init()
 
         logger.info("Getting parser")
         self.corpus_parser = self._get_parser()
@@ -70,11 +69,9 @@ class FonduerModel(pyfunc.PythonModel):
 
         self.model_type = pyfunc_conf.get(MODEL_TYPE, "discriminative")
         if self.model_type == "discriminative":
-            self.featurizer = FeaturizerUDF(candidate_classes)
+            self.featurizer = FeaturizerUDF(candidate_classes, FeatureExtractor())
             with open(os.path.join(self.model_path, "feature_keys.pkl"), "rb") as f:
                 key_names = pickle.load(f)
-            self.featurizer.drop_keys(key_names)
-            self.featurizer.upsert_keys(key_names)
 
             self.disc_model = torch.load(os.path.join(self.model_path, "disc_model.pkl"))
 
@@ -109,17 +106,17 @@ class FonduerModel(pyfunc.PythonModel):
         doc_preprocessor = self._get_doc_preprocessor(path)
         # clear=False otherwise gets stuck.
         self.corpus_parser.apply(
-            doc_preprocessor, clear=False, parallelism=self.parallel, pdf_path=path
+            doc_preprocessor, clear=False, pdf_path=path
         )
         logger.info(f"Parsing {path}")
         test_docs = self.corpus_parser.get_last_documents()
 
         logger.info(f"Extracting mentions from {path}")
-        self.mention_extractor.apply(test_docs, clear=False, parallelism=self.parallel)
+        self.mention_extractor.apply(test_docs, clear=False)
 
         logger.info(f"Extracting candidates from {path}")
         self.candidate_extractor.apply(
-            test_docs, split=2, clear=True, parallelism=self.parallel
+            test_docs, split=2, clear=True
         )
 
         logger.info(f"Classifying candidates from {path}")
@@ -143,7 +140,6 @@ def log_model(
     fonduer_model: FonduerModel,
     artifact_path: str,
     code_paths: Optional[List[str]] = None,
-    parallel: Optional[int] = 1,
     model_type: Optional[str] = "discriminative",
     labeler: Optional[Labeler] = None,
     gen_models: Optional[List[LabelModel]] = None,
@@ -156,7 +152,6 @@ def log_model(
         flavor=sys.modules[__name__],
         fonduer_model=fonduer_model,
         code_paths=code_paths,
-        parallel=parallel,
         model_type=model_type,
         labeler=labeler,
         gen_models=gen_models,
@@ -171,7 +166,6 @@ def save_model(
     path: str,
     mlflow_model: Model = Model(),
     code_paths: Optional[List[str]] = None,
-    parallel: Optional[int] = 1,
     model_type: Optional[str] = "discriminative",
     labeler: Optional[Labeler] = None,
     gen_models: Optional[List[LabelModel]] = None,
@@ -186,7 +180,6 @@ def save_model(
     :param conn_string: the connection string.
     :param mlflow_model: model configuration.
     :param code_paths: A list of local filesystem paths to Python file dependencies (or directories containing file dependencies). These files are prepended to the system path when the model is loaded.
-    :param parallel: the number of parallelism.
     :param model_type: the model type, either "discriminative" or "generative", defaults to "discriminative".
     :param labeler: a labeler, defaults to None.
     :param gen_models: a list of generative models, defaults to None.
@@ -226,7 +219,6 @@ def save_model(
         pyfunc.FLAVOR_NAME,
         code=pyfunc.CODE,
         loader_module=__name__,
-        parallel=parallel,
         model_type=model_type,
     )
     mlflow_model.save(os.path.join(path, "MLmodel"))

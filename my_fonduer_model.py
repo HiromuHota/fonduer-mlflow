@@ -36,7 +36,20 @@ class MyFonduerModel(FonduerModel):
         return HTMLDocPreprocessor(path)
 
     def _get_parser(self) -> ParserUDF:
-        return ParserUDF(structural=True, lingual=True)
+        return ParserUDF(
+            structural=True,
+            blacklist=["style", "script"],
+            flatten=["span", "br"],
+            language="en",
+            lingual=True,
+            lingual_parser=None,
+            strip=True,
+            replacements=[("[\u2010\u2011\u2012\u2013\u2014\u2212]", "-")],
+            tabular=True,
+            visual=False,
+            vizlink=None,
+            pdf_path=None,
+        )
 
     def _get_mention_extractor(self) -> MentionExtractorUDF:
         return MentionExtractorUDF(
@@ -44,7 +57,11 @@ class MyFonduerModel(FonduerModel):
         )
 
     def _get_candidate_extractor(self) -> CandidateExtractorUDF:
-        return CandidateExtractorUDF(candidate_classes)
+        return CandidateExtractorUDF(
+            candidate_classes,
+            [None] * len(candidate_classes),
+            False, False, True
+        )
 
     def _classify(self) -> DataFrame:
         test_docs = self.corpus_parser.get_last_documents()
