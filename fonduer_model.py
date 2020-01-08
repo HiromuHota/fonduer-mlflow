@@ -71,7 +71,7 @@ class FonduerModel(pyfunc.PythonModel):
         if self.model_type == "discriminative":
             self.featurizer = FeaturizerUDF(candidate_classes, FeatureExtractor())
             with open(os.path.join(self.model_path, "feature_keys.pkl"), "rb") as f:
-                key_names = pickle.load(f)
+                self.key_names = pickle.load(f)
 
             self.disc_model = torch.load(os.path.join(self.model_path, "disc_model.pkl"))
 
@@ -81,7 +81,7 @@ class FonduerModel(pyfunc.PythonModel):
         else:
             self.labeler = LabelerUDF(candidate_classes)
             with open(os.path.join(self.model_path, "labeler_keys.pkl"), "rb") as f:
-                key_names = pickle.load(f)
+                self.key_names = pickle.load(f)
 
             self.gen_models = [
                 LabelModel.load(os.path.join(self.model_path, _.__name__ + ".pkl"))
@@ -103,24 +103,20 @@ class FonduerModel(pyfunc.PythonModel):
         if not os.path.exists(path):
             raise RuntimeError("path should be a file/directory path")
         # Parse docs
-        doc_preprocessor = self._get_doc_preprocessor(path)
-        # clear=False otherwise gets stuck.
-        self.corpus_parser.apply(
-            doc_preprocessor, clear=False, pdf_path=path
-        )
+        preprocessor = self._get_doc_preprocessor(path)
+        doc = next(preprocessor._parse_file(path, os.path.basename(path)))
+
         logger.info(f"Parsing {path}")
-        test_docs = self.corpus_parser.get_last_documents()
+        doc = self.corpus_parser.apply(doc)
 
         logger.info(f"Extracting mentions from {path}")
-        self.mention_extractor.apply(test_docs, clear=False)
+        doc = self.mention_extractor.apply(doc)
 
         logger.info(f"Extracting candidates from {path}")
-        self.candidate_extractor.apply(
-            test_docs, split=2, clear=True
-        )
+        doc = self.candidate_extractor.apply(doc, split=2)
 
         logger.info(f"Classifying candidates from {path}")
-        df = self._classify()
+        df = self._classify(doc)
         return df
 
 

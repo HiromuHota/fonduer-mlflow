@@ -1,10 +1,12 @@
 from typing import Iterable, Set, Tuple
 from pandas import DataFrame
 import numpy as np
+from scipy.sparse import csr_matrix
 
 from emmental.data import EmmentalDataLoader
 from fonduer.parser.parser import ParserUDF
 from fonduer.parser.preprocessors import DocPreprocessor, HTMLDocPreprocessor
+from fonduer.parser.models import Document
 from fonduer.candidates.candidates import CandidateExtractorUDF
 from fonduer.candidates.mentions import MentionExtractorUDF
 from fonduer.candidates.models import Candidate
@@ -63,13 +65,30 @@ class MyFonduerModel(FonduerModel):
             False, False, True
         )
 
-    def _classify(self) -> DataFrame:
-        test_docs = self.corpus_parser.get_last_documents()
-        test_cands = self.candidate_extractor.get_candidates(split=2)
+    def _classify(self, doc: Document) -> DataFrame:
+        test_cands = [getattr(doc, candidate_class.__tablename__ + "s") for candidate_class in candidate_classes]
+
+        keys_map = {}
+        for (i, k) in enumerate(self.key_names):
+            keys_map[k] = i
 
         # Featurization
-        self.featurizer.apply(test_docs, clear=False)
-        F_test = self.featurizer.get_feature_matrices(test_cands)
+        features = self.featurizer.apply(doc)
+
+        # Convert features into a sparse matrix
+        F_test = []
+        indptr = [0]
+        indices = []
+        data = []
+        for feature in features:
+            for cand_key, cand_value in zip(feature["keys"], feature["values"]):
+                if cand_key in self.key_names:
+                    indices.append(keys_map[cand_key])
+                    data.append(cand_value)
+            indptr.append(len(indices))
+        F_test.append(
+            csr_matrix((data, indices, indptr), shape=(len(test_cands[0]), len(self.key_names)))
+        )
 
         # Dataloader for test
         ATTRIBUTE = "wiki"
