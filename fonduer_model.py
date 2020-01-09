@@ -16,6 +16,7 @@ import emmental
 from emmental.model import EmmentalModel
 from fonduer import Meta, init_logging
 from fonduer.parser.parser import ParserUDF
+from fonduer.parser.models import Document
 from fonduer.parser.preprocessors import DocPreprocessor
 from fonduer.candidates.candidates import CandidateExtractorUDF
 from fonduer.candidates.mentions import MentionExtractorUDF
@@ -46,7 +47,7 @@ class FonduerModel(pyfunc.PythonModel):
     def _get_candidate_extractor(self) -> CandidateExtractorUDF:
         raise NotImplementedError()
 
-    def _classify(self) -> DataFrame:
+    def _classify(self, doc: Document) -> DataFrame:
         raise NotImplementedError()
 
     def load_context(self, context: PythonModelContext) -> None:
