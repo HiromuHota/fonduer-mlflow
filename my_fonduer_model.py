@@ -1,3 +1,4 @@
+import itertools
 from typing import Iterable, Set, Tuple
 from pandas import DataFrame
 import numpy as np
@@ -73,7 +74,8 @@ class MyFonduerModel(FonduerModel):
             keys_map[k] = i
 
         # Featurization
-        features = self.featurizer.apply(doc)
+        features_list = self.featurizer.apply(doc)
+        features = itertools.chain.from_iterable(features_list)
 
         # Convert features into a sparse matrix
         F_test = []
