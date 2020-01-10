@@ -35,37 +35,6 @@ TRUE = 1
 
 
 class MyFonduerModel(FonduerModel):
-    def _get_doc_preprocessor(self, path: str) -> DocPreprocessor:
-        return HTMLDocPreprocessor(path)
-
-    def _get_parser(self) -> ParserUDF:
-        return ParserUDF(
-            structural=True,
-            blacklist=["style", "script"],
-            flatten=["span", "br"],
-            language="en",
-            lingual=True,
-            lingual_parser=None,
-            strip=True,
-            replacements=[("[\u2010\u2011\u2012\u2013\u2014\u2212]", "-")],
-            tabular=True,
-            visual=False,
-            vizlink=None,
-            pdf_path=None,
-        )
-
-    def _get_mention_extractor(self) -> MentionExtractorUDF:
-        return MentionExtractorUDF(
-            mention_classes, mention_spaces, matchers
-        )
-
-    def _get_candidate_extractor(self) -> CandidateExtractorUDF:
-        return CandidateExtractorUDF(
-            candidate_classes,
-            [None] * len(candidate_classes),
-            False, False, True
-        )
-
     def _classify(self, doc: Document) -> DataFrame:
         test_cands = [getattr(doc, candidate_class.__tablename__ + "s") for candidate_class in candidate_classes]
 

@@ -15,9 +15,11 @@ import torch
 import emmental
 from emmental.model import EmmentalModel
 from fonduer import Meta, init_logging
+from fonduer.parser import Parser
 from fonduer.parser.parser import ParserUDF
 from fonduer.parser.models import Document
 from fonduer.parser.preprocessors import DocPreprocessor
+from fonduer.candidates import CandidateExtractor, MentionExtractor
 from fonduer.candidates.candidates import CandidateExtractorUDF
 from fonduer.candidates.mentions import MentionExtractorUDF
 from fonduer.features.feature_extractors import FeatureExtractor
@@ -34,19 +36,6 @@ class FonduerModel(pyfunc.PythonModel):
     """
     A custom MLflow model for Fonduer.
     """
-
-    def _get_doc_preprocessor(self, path: str) -> DocPreprocessor:
-        raise NotImplementedError()
-
-    def _get_parser(self) -> ParserUDF:
-        raise NotImplementedError()
-
-    def _get_mention_extractor(self) -> MentionExtractorUDF:
-        raise NotImplementedError()
-
-    def _get_candidate_extractor(self) -> CandidateExtractorUDF:
-        raise NotImplementedError()
-
     def _classify(self, doc: Document) -> DataFrame:
         raise NotImplementedError()
 
@@ -60,12 +49,15 @@ class FonduerModel(pyfunc.PythonModel):
         )
         emmental.init()
 
+        others = pickle.load(open(os.path.join(self.model_path, "others.pkl"), "rb"))
+        self.preprocessor = others["preprosessor"]
+
         logger.info("Getting parser")
-        self.corpus_parser = self._get_parser()
+        self.corpus_parser = ParserUDF(**others["parser"])
         logger.info("Getting mention extractor")
-        self.mention_extractor = self._get_mention_extractor()
+        self.mention_extractor = MentionExtractorUDF(**others["mention_extractor"])
         logger.info("Getting candidate extractor")
-        self.candidate_extractor = self._get_candidate_extractor()
+        self.candidate_extractor = CandidateExtractorUDF(**others["candidate_extractor"])
         candidate_classes = self.candidate_extractor.candidate_classes
 
         self.model_type = pyfunc_conf.get(MODEL_TYPE, "discriminative")
@@ -105,8 +97,7 @@ class FonduerModel(pyfunc.PythonModel):
         if not os.path.exists(path):
             raise RuntimeError("path should be a file/directory path")
         # Parse docs
-        preprocessor = self._get_doc_preprocessor(path)
-        doc = next(preprocessor._parse_file(path, os.path.basename(path)))
+        doc = next(self.preprocessor._parse_file(path, os.path.basename(path)))
 
         logger.info(f"Parsing {path}")
         doc = self.corpus_parser.apply(doc, pdf_path=path)
@@ -137,6 +128,10 @@ def _load_pyfunc(model_path: str):
 def log_model(
     fonduer_model: FonduerModel,
     artifact_path: str,
+    preprocessor: DocPreprocessor,
+    parser: Parser,
+    mention_extractor: MentionExtractor,
+    candidate_extractor: CandidateExtractor,
     code_paths: Optional[List[str]] = None,
     model_type: Optional[str] = "discriminative",
     labeler: Optional[Labeler] = None,
@@ -149,6 +144,10 @@ def log_model(
         artifact_path=artifact_path,
         flavor=sys.modules[__name__],
         fonduer_model=fonduer_model,
+        preprocessor=preprocessor,
+        parser=parser,
+        mention_extractor=mention_extractor,
+        candidate_extractor=candidate_extractor,
         code_paths=code_paths,
         model_type=model_type,
         labeler=labeler,
@@ -162,6 +161,10 @@ def log_model(
 def save_model(
     fonduer_model: FonduerModel,
     path: str,
+    preprocessor: DocPreprocessor,
+    parser: Parser,
+    mention_extractor: MentionExtractor,
+    candidate_extractor: CandidateExtractor,
     mlflow_model: Model = Model(),
     code_paths: Optional[List[str]] = None,
     model_type: Optional[str] = "discriminative",
@@ -191,6 +194,16 @@ def save_model(
 
     with open(os.path.join(path, "fonduer_model.pkl"), "wb") as f:
         pickle.dump(fonduer_model, f)
+    with open(os.path.join(path, "others.pkl"), "wb") as f:
+        pickle.dump(
+            {
+                "preprosessor": preprocessor,
+                "parser": parser.udf_init_kwargs,
+                "mention_extractor": mention_extractor.udf_init_kwargs,
+                "candidate_extractor": candidate_extractor.udf_init_kwargs,
+            },
+            f
+        )
     if model_type == "discriminative":
         key_names = [key.name for key in featurizer.get_keys()]
         with open(os.path.join(path, "feature_keys.pkl"), "wb") as f:
