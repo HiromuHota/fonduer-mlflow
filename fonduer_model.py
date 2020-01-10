@@ -109,7 +109,7 @@ class FonduerModel(pyfunc.PythonModel):
         doc = next(preprocessor._parse_file(path, os.path.basename(path)))
 
         logger.info(f"Parsing {path}")
-        doc = self.corpus_parser.apply(doc)
+        doc = self.corpus_parser.apply(doc, pdf_path=path)
 
         logger.info(f"Extracting mentions from {path}")
         doc = self.mention_extractor.apply(doc)
