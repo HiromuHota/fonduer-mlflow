@@ -84,10 +84,11 @@ class FonduerModel(pyfunc.PythonModel):
             with open(os.path.join(self.model_path, "labeler_keys.pkl"), "rb") as f:
                 self.key_names = pickle.load(f)
 
-            self.gen_models = [
-                LabelModel.load(os.path.join(self.model_path, _.__name__ + ".pkl"))
-                for _ in candidate_classes
-            ]
+            self.gen_models = []
+            for _ in candidate_classes:
+                gen_model = LabelModel()
+                gen_model.load(os.path.join(self.model_path, _.__name__ + ".pkl"))
+                self.gen_models.append(gen_model)
 
     def predict(self, context: PythonModelContext, model_input: DataFrame) -> DataFrame:
         df = DataFrame()
