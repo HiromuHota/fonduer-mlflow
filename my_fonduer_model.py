@@ -36,18 +36,19 @@ TRUE = 1
 
 class MyFonduerModel(FonduerModel):
     def _classify(self, doc: Document) -> DataFrame:
-        test_cands = [getattr(doc, candidate_class.__tablename__ + "s") for candidate_class in candidate_classes]
-
-        keys_map = {}
-        for (i, k) in enumerate(self.key_names):
-            keys_map[k] = i
+        # Only one candidate class is defined.
+        candidate_class = candidate_classes[0]
+        test_cands = getattr(doc, candidate_class.__tablename__ + "s")
 
         # Featurization
         features_list = self.featurizer.apply(doc)
         features = itertools.chain.from_iterable(features_list)
 
         # Convert features into a sparse matrix
-        F_test = []
+        keys_map = {}
+        for (i, k) in enumerate(self.key_names):
+            keys_map[k] = i
+
         indptr = [0]
         indices = []
         data = []
@@ -57,16 +58,14 @@ class MyFonduerModel(FonduerModel):
                     indices.append(keys_map[cand_key])
                     data.append(cand_value)
             indptr.append(len(indices))
-        F_test.append(
-            csr_matrix((data, indices, indptr), shape=(len(test_cands[0]), len(self.key_names)))
-        )
+        F_test = csr_matrix((data, indices, indptr), shape=(len(test_cands), len(self.key_names)))
 
         # Dataloader for test
         ATTRIBUTE = "wiki"
         test_dataloader = EmmentalDataLoader(
             task_to_label_dict={ATTRIBUTE: "labels"},
             dataset=FonduerDataset(
-                ATTRIBUTE, test_cands[0], F_test[0], self.word2id, 2
+                ATTRIBUTE, test_cands, F_test, self.word2id, 2
             ),
             split="test",
             batch_size=100,
@@ -75,13 +74,13 @@ class MyFonduerModel(FonduerModel):
 
         test_preds = self.disc_model.predict(test_dataloader, return_preds=True)
         positive = np.where(np.array(test_preds["probs"][ATTRIBUTE])[:, TRUE] > 0.6)
-        true_preds = [test_cands[0][_] for _ in positive[0]]
+        true_preds = [test_cands[_] for _ in positive[0]]
 
         df = DataFrame()
         for entity_relation in get_unique_entity_relations(true_preds):
             df = df.append(
                 DataFrame([entity_relation],
-                columns=[m.__name__ for m in self.mention_extractor.mention_classes]
+                columns=[m.__name__ for m in candidate_class.mentions]
                 )
             )
         return df
