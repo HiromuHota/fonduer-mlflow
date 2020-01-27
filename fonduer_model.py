@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional
 
 from mlflow import pyfunc
 from mlflow.models import Model
-from mlflow.pyfunc.model import PythonModelContext
 from mlflow.utils.file_utils import _copy_file_or_tree
 from mlflow.utils.model_utils import _get_flavor_configuration
 from pandas import DataFrame
@@ -39,41 +38,7 @@ class FonduerModel(pyfunc.PythonModel):
     def _classify(self, doc: Document) -> DataFrame:
         raise NotImplementedError()
 
-    def load_context(self, context: PythonModelContext) -> None:
-        # Configure logging for Fonduer
-        init_logging(log_dir="logs")
-        logger.info("loading context")
-
-        pyfunc_conf = _get_flavor_configuration(
-            model_path=self.model_path, flavor_name=pyfunc.FLAVOR_NAME
-        )
-        emmental.init()
-
-        candidate_classes = self.candidate_extractor.candidate_classes
-
-        self.model_type = pyfunc_conf.get(MODEL_TYPE, "discriminative")
-        if self.model_type == "discriminative":
-            self.featurizer = FeaturizerUDF(candidate_classes, FeatureExtractor())
-            with open(os.path.join(self.model_path, "feature_keys.pkl"), "rb") as f:
-                self.key_names = pickle.load(f)
-
-            self.disc_model = torch.load(os.path.join(self.model_path, "disc_model.pkl"))
-
-            with open(os.path.join(self.model_path, "word2id.pkl"), "rb") as f:
-                self.word2id = pickle.load(f)
-
-        else:
-            self.labeler = LabelerUDF(candidate_classes)
-            with open(os.path.join(self.model_path, "labeler_keys.pkl"), "rb") as f:
-                self.key_names = pickle.load(f)
-
-            self.gen_models = []
-            for _ in candidate_classes:
-                gen_model = LabelModel()
-                gen_model.load(os.path.join(self.model_path, _.__name__ + ".pkl"))
-                self.gen_models.append(gen_model)
-
-    def predict(self, context: PythonModelContext, model_input: DataFrame) -> DataFrame:
+    def predict(self, model_input: DataFrame) -> DataFrame:
         df = DataFrame()
         for index, row in model_input.iterrows():
             df = df.append(self._process(row["path"]))
@@ -115,10 +80,37 @@ def _load_pyfunc(model_path: str):
     fonduer_model.mention_extractor = MentionExtractorUDF(**model["mention_extractor"])
     fonduer_model.candidate_extractor = CandidateExtractorUDF(**model["candidate_extractor"])
 
-    fonduer_model.model_path = model_path
-    context = PythonModelContext(artifacts=None)
-    fonduer_model.load_context(context=context)
-    return _FonduerWrapper(fonduer_model, context)
+    # Configure logging for Fonduer
+    init_logging(log_dir="logs")
+
+    pyfunc_conf = _get_flavor_configuration(
+        model_path=model_path, flavor_name=pyfunc.FLAVOR_NAME
+    )
+    candidate_classes = fonduer_model.candidate_extractor.candidate_classes
+
+    fonduer_model.model_type = pyfunc_conf.get(MODEL_TYPE, "discriminative")
+    if fonduer_model.model_type == "discriminative":
+        emmental.init()
+        fonduer_model.featurizer = FeaturizerUDF(candidate_classes, FeatureExtractor())
+        with open(os.path.join(model_path, "feature_keys.pkl"), "rb") as f:
+            fonduer_model.key_names = pickle.load(f)
+
+        fonduer_model.disc_model = torch.load(os.path.join(model_path, "disc_model.pkl"))
+
+        with open(os.path.join(model_path, "word2id.pkl"), "rb") as f:
+            fonduer_model.word2id = pickle.load(f)
+
+    else:
+        fonduer_model.labeler = LabelerUDF(candidate_classes)
+        with open(os.path.join(model_path, "labeler_keys.pkl"), "rb") as f:
+            fonduer_model.key_names = pickle.load(f)
+
+        fonduer_model.gen_models = []
+        for _ in candidate_classes:
+            gen_model = LabelModel()
+            gen_model.load(os.path.join(model_path, _.__name__ + ".pkl"))
+            fonduer_model.gen_models.append(gen_model)
+    return _FonduerWrapper(fonduer_model)
 
 
 def log_model(
@@ -237,16 +229,13 @@ class _FonduerWrapper(object):
     """
 
     def __init__(
-        self, fonduer_model: FonduerModel, context: PythonModelContext
+        self, fonduer_model: FonduerModel
     ) -> None:
         """
         :param python_model: An instance of a subclass of :class:`~PythonModel`.
-        :param context: A :class:`~PythonModelContext` instance containing artifacts that
-                        ``python_model`` may use when performing inference.
         """
         self.fonduer_model = fonduer_model
-        self.context = context
 
     def predict(self, dataframe: DataFrame) -> DataFrame:
-        predicted = self.fonduer_model.predict(self.context, dataframe)
+        predicted = self.fonduer_model.predict(dataframe)
         return predicted
