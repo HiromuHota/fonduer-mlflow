@@ -49,15 +49,6 @@ class FonduerModel(pyfunc.PythonModel):
         )
         emmental.init()
 
-        others = pickle.load(open(os.path.join(self.model_path, "others.pkl"), "rb"))
-        self.preprocessor = others["preprosessor"]
-
-        logger.info("Getting parser")
-        self.corpus_parser = ParserUDF(**others["parser"])
-        logger.info("Getting mention extractor")
-        self.mention_extractor = MentionExtractorUDF(**others["mention_extractor"])
-        logger.info("Getting candidate extractor")
-        self.candidate_extractor = CandidateExtractorUDF(**others["candidate_extractor"])
         candidate_classes = self.candidate_extractor.candidate_classes
 
         self.model_type = pyfunc_conf.get(MODEL_TYPE, "discriminative")
@@ -117,8 +108,13 @@ def _load_pyfunc(model_path: str):
     """
     Load PyFunc implementation. Called by ``pyfunc.load_pyfunc``.
     """
-    with open(os.path.join(model_path, "fonduer_model.pkl"), "rb") as f:
-        fonduer_model = pickle.load(f)
+    model = pickle.load(open(os.path.join(model_path, "model.pkl"), "rb"))
+    fonduer_model = model["fonduer_model"]
+    fonduer_model.preprocessor = model["preprosessor"]
+    fonduer_model.corpus_parser = ParserUDF(**model["parser"])
+    fonduer_model.mention_extractor = MentionExtractorUDF(**model["mention_extractor"])
+    fonduer_model.candidate_extractor = CandidateExtractorUDF(**model["candidate_extractor"])
+
     fonduer_model.model_path = model_path
     context = PythonModelContext(artifacts=None)
     fonduer_model.load_context(context=context)
@@ -192,18 +188,17 @@ def save_model(
     model_code_path = os.path.join(path, pyfunc.CODE)
     os.makedirs(model_code_path)
 
-    with open(os.path.join(path, "fonduer_model.pkl"), "wb") as f:
-        pickle.dump(fonduer_model, f)
-    with open(os.path.join(path, "others.pkl"), "wb") as f:
-        pickle.dump(
-            {
-                "preprosessor": preprocessor,
-                "parser": parser.udf_init_kwargs,
-                "mention_extractor": mention_extractor.udf_init_kwargs,
-                "candidate_extractor": candidate_extractor.udf_init_kwargs,
-            },
-            f
-        )
+    # Note that ParserUDF, MentionExtractorUDF, CandidateExtractorUDF themselves are not picklable.
+    pickle.dump(
+        {
+            "fonduer_model": fonduer_model,
+            "preprosessor": preprocessor,
+            "parser": parser.udf_init_kwargs,
+            "mention_extractor": mention_extractor.udf_init_kwargs,
+            "candidate_extractor": candidate_extractor.udf_init_kwargs,
+        },
+        open(os.path.join(path, "model.pkl"), "wb")
+    )
     if model_type == "discriminative":
         key_names = [key.name for key in featurizer.get_keys()]
         with open(os.path.join(path, "feature_keys.pkl"), "wb") as f:
