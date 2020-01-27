@@ -92,18 +92,13 @@ def _load_pyfunc(model_path: str):
     if fonduer_model.model_type == "discriminative":
         emmental.init()
         fonduer_model.featurizer = FeaturizerUDF(candidate_classes, FeatureExtractor())
-        with open(os.path.join(model_path, "feature_keys.pkl"), "rb") as f:
-            fonduer_model.key_names = pickle.load(f)
+        fonduer_model.key_names = model["feature_keys"]
+        fonduer_model.word2id = model["word2id"]
 
         fonduer_model.disc_model = torch.load(os.path.join(model_path, "disc_model.pkl"))
-
-        with open(os.path.join(model_path, "word2id.pkl"), "rb") as f:
-            fonduer_model.word2id = pickle.load(f)
-
     else:
         fonduer_model.labeler = LabelerUDF(candidate_classes)
-        with open(os.path.join(model_path, "labeler_keys.pkl"), "rb") as f:
-            fonduer_model.key_names = pickle.load(f)
+        fonduer_model.key_names = model["labeler_keys"]
 
         fonduer_model.gen_models = []
         for _ in candidate_classes:
@@ -181,32 +176,27 @@ def save_model(
     os.makedirs(model_code_path)
 
     # Note that ParserUDF, MentionExtractorUDF, CandidateExtractorUDF themselves are not picklable.
-    pickle.dump(
-        {
-            "fonduer_model": fonduer_model,
-            "preprosessor": preprocessor,
-            "parser": parser.udf_init_kwargs,
-            "mention_extractor": mention_extractor.udf_init_kwargs,
-            "candidate_extractor": candidate_extractor.udf_init_kwargs,
-        },
-        open(os.path.join(path, "model.pkl"), "wb")
-    )
+    model = {
+        "fonduer_model": fonduer_model,
+        "preprosessor": preprocessor,
+        "parser": parser.udf_init_kwargs,
+        "mention_extractor": mention_extractor.udf_init_kwargs,
+        "candidate_extractor": candidate_extractor.udf_init_kwargs,
+    }
     if model_type == "discriminative":
         key_names = [key.name for key in featurizer.get_keys()]
-        with open(os.path.join(path, "feature_keys.pkl"), "wb") as f:
-            pickle.dump(key_names, f)
+        model["feature_keys"] = key_names
+        model["word2id"] = word2id
 
         torch.save(disc_model, os.path.join(path, "disc_model.pkl"))
-
-        with open(os.path.join(path, "word2id.pkl"), "wb") as f:
-            pickle.dump(word2id, f)
     else:
+        key_names = [key.name for key in labeler.get_keys()]
+        model["labeler_keys"] = key_names
+
         for candidate_class, gen_model in zip(labeler.candidate_classes, gen_models):
             gen_model.save(os.path.join(path, candidate_class.__name__ + ".pkl"))
 
-        key_names = [key.name for key in labeler.get_keys()]
-        with open(os.path.join(path, "labeler_keys.pkl"), "wb") as f:
-            pickle.dump(key_names, f)
+    pickle.dump(model, open(os.path.join(path, "model.pkl"), "wb"))
 
     _copy_file_or_tree(src=__file__, dst=model_code_path)
     if code_paths is not None:
