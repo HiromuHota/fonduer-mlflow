@@ -14,7 +14,6 @@ from fonduer.candidates.models import Candidate
 from fonduer.learning.dataset import FonduerDataset
 
 from fonduer_model import FonduerModel
-from fonduerconfig import matchers, mention_classes, mention_spaces, candidate_classes
 
 
 def get_entity_relation(candidate: Candidate) -> Tuple:
@@ -37,7 +36,7 @@ TRUE = 1
 class MyFonduerModel(FonduerModel):
     def _classify(self, doc: Document) -> DataFrame:
         # Only one candidate class is defined.
-        candidate_class = candidate_classes[0]
+        candidate_class = self.candidate_extractor.candidate_classes[0]
         test_cands = getattr(doc, candidate_class.__tablename__ + "s")
 
         # Featurization

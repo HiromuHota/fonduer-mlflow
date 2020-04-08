@@ -23,7 +23,7 @@ Contributions to the Fonduer project include
 
 # Development
 
-Let's assume that `fonduerconfig.py` and `lfconfig.py` have been already developed, each of which defines mention/candidate subclasses and labeling functions, respectively.
+Let's assume that `fonduer_subclasses.py` and `fonduer_lfs.py` have been already developed, each of which defines mention/candidate subclasses and labeling functions, respectively.
 
 # Training
 

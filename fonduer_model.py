@@ -26,6 +26,8 @@ from fonduer.features.featurizer import Featurizer, FeaturizerUDF
 from fonduer.supervision.labeler import Labeler, LabelerUDF
 from snorkel.labeling.model import LabelModel
 
+from fonduer_subclasses import mention_classes, candidate_classes
+
 logger = logging.getLogger(__name__)
 
 MODEL_TYPE = "model_type"
