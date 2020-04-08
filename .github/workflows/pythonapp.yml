@@ -45,6 +45,6 @@ jobs:
         mlflow run ./ --no-conda -P conn_string=postgresql://runner:postgres@localhost:5432/pob_presidents
     - name: Use the model for inference without a database
       run: |
-        docker rm -f postgres
+        docker rm -f $(docker ps --no-trunc -q -f "ancestor=postgres:12")
         echo '{"columns": ["path"], "data": ["data/new/Al_Gore.html"]}' > input.json
         mlflow models predict -m fonduer_model -t json -i input.json
