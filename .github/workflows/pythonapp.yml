@@ -19,7 +19,7 @@ jobs:
         pip install torch==1.2.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
         pip install mlflow==1.5.0
         sudo apt update && sudo apt install -y --no-install-recommends libpq-dev
-        pip install git+https://github.com/HiromuHota/fonduer.git@fix/316
+        pip install fonduer==0.8.0
     - name: Lint with flake8
       run: |
         pip install flake8
