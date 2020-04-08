@@ -23,7 +23,7 @@ from fonduer.candidates.mentions import MentionExtractorUDF
 from fonduer.features.feature_extractors import FeatureExtractor
 from fonduer.features.featurizer import Featurizer, FeaturizerUDF
 from fonduer.supervision.labeler import Labeler, LabelerUDF
-from snorkel.labeling import LabelModel
+from snorkel.labeling.model import LabelModel
 
 logger = logging.getLogger(__name__)
 

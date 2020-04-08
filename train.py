@@ -83,7 +83,7 @@ L_train = labeler.get_label_matrices(train_cands)
 
 L_gold_train = labeler.get_gold_labels(train_cands, annotator="gold")
 
-from snorkel.labeling import LabelModel
+from snorkel.labeling.model import LabelModel
 
 gen_model = LabelModel(verbose=False)
 gen_model.fit(L_train[0], n_epochs=500)
