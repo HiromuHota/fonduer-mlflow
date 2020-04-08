@@ -64,7 +64,6 @@ print(
 )
 
 from fonduer.features import Featurizer
-import pickle
 
 featurizer = Featurizer(session, candidate_classes)
 featurizer.apply(split=0, train=True, parallelism=PARALLEL)
@@ -77,32 +76,76 @@ from fonduer.supervision.models import GoldLabel
 labeler = Labeler(session, candidate_classes)
 labeler.apply(docs=train_docs, lfs=[[gold]], table=GoldLabel, train=True)
 
-from lfconfig import president_name_pob_lfs, TRUE
+from lfconfig import president_name_pob_lfs
 
 labeler.apply(split=0, lfs=[president_name_pob_lfs], train=True, parallelism=PARALLEL)
 L_train = labeler.get_label_matrices(train_cands)
 
 L_gold_train = labeler.get_gold_labels(train_cands, annotator="gold")
 
-from metal import analysis
+from snorkel.labeling.model import LabelModel
 
-analysis.lf_summary(
-    L_train[0],
-    lf_names=labeler.get_keys(),
-    Y=L_gold_train[0].todense().reshape(-1).tolist()[0],
-)
-
-from metal.label_model import LabelModel
-
-gen_model = LabelModel(k=2)
-gen_model.train_model(L_train[0], n_epochs=500, verbose=False)
+gen_model = LabelModel(verbose=False)
+gen_model.fit(L_train[0], n_epochs=500)
 
 train_marginals = gen_model.predict_proba(L_train[0])
 
-from fonduer.learning import LogisticRegression
+ATTRIBUTE = "wiki"
 
-disc_model = LogisticRegression()
-disc_model.train((train_cands[0], F_train[0]), train_marginals, n_epochs=10, lr=0.001)
+import numpy as np
+import emmental
+from emmental.data import EmmentalDataLoader
+from emmental.learner import EmmentalLearner
+from emmental.model import EmmentalModel
+from emmental.modules.embedding_module import EmbeddingModule
+from fonduer.learning.dataset import FonduerDataset
+from fonduer.learning.task import create_task
+from fonduer.learning.utils import collect_word_counter
+# Collect word counter
+word_counter = collect_word_counter(train_cands)
+
+emmental.init(Meta.log_path)
+
+# Generate word embedding module
+arity = 2
+# Geneate special tokens
+specials = []
+for i in range(arity):
+    specials += [f"~~[[{i}", f"{i}]]~~"]
+
+emb_layer = EmbeddingModule(
+    word_counter=word_counter, word_dim=300, specials=specials
+)
+
+diffs = train_marginals.max(axis=1) - train_marginals.min(axis=1)
+train_idxs = np.where(diffs > 1e-6)[0]
+
+train_dataloader = EmmentalDataLoader(
+    task_to_label_dict={ATTRIBUTE: "labels"},
+    dataset=FonduerDataset(
+        ATTRIBUTE,
+        train_cands[0],
+        F_train[0],
+        emb_layer.word2id,
+        train_marginals,
+        train_idxs,
+    ),
+    split="train",
+    batch_size=100,
+    shuffle=True,
+)
+
+tasks = create_task(
+    ATTRIBUTE, 2, F_train[0].shape[1], 2, emb_layer, model="LogisticRegression"
+)
+
+disc_model = EmmentalModel()
+
+for task in tasks:
+    disc_model.add_task(task)
+
+emmental_learner = EmmentalLearner()
+emmental_learner.learn(disc_model, [train_dataloader])
 
 from my_fonduer_model import MyFonduerModel
 model = MyFonduerModel()
@@ -115,17 +158,17 @@ import fonduer_model
 fonduer_model.save_model(
     model,
     "fonduer_model",
-    conn_string=conn_string,
     code_paths=code_paths,
     featurizer=featurizer,
     disc_model=disc_model,
+    word2id=emb_layer.word2id,
 )
 
 fonduer_model.log_model(
     model,
     "fonduer_model",
-    conn_string=conn_string,
     code_paths=code_paths,
     featurizer=featurizer,
     disc_model=disc_model,
+    word2id=emb_layer.word2id,
 )
