@@ -14,6 +14,7 @@ from fonduer.candidates.models import Candidate
 from fonduer.learning.dataset import FonduerDataset
 
 from fonduer_model import FonduerModel
+from fonduer_subclasses import mention_classes, candidate_classes
 
 
 def get_entity_relation(candidate: Candidate) -> Tuple:
