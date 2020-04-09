@@ -37,7 +37,7 @@ train_docs = session.query(Document).order_by(Document.name).all()
 
 # Mention
 
-from fonduerconfig import mention_classes, mention_spaces, matchers, candidate_classes
+from fonduer_subclasses import mention_classes, mention_spaces, matchers, candidate_classes
 from fonduer.candidates import MentionExtractor
 mention_extractor = MentionExtractor(
     session,
@@ -76,7 +76,7 @@ from fonduer.supervision.models import GoldLabel
 labeler = Labeler(session, candidate_classes)
 labeler.apply(docs=train_docs, lfs=[[gold]], table=GoldLabel, train=True)
 
-from lfconfig import president_name_pob_lfs
+from fonduer_lfs import president_name_pob_lfs
 
 labeler.apply(split=0, lfs=[president_name_pob_lfs], train=True, parallelism=PARALLEL)
 L_train = labeler.get_label_matrices(train_cands)
@@ -150,7 +150,7 @@ emmental_learner.learn(disc_model, [train_dataloader])
 from my_fonduer_model import MyFonduerModel
 model = MyFonduerModel()
 code_paths = [
-    "fonduerconfig.py",
+    "fonduer_subclasses.py",
     "my_fonduer_model.py",
 ]
 
@@ -159,6 +159,10 @@ fonduer_model.save_model(
     model,
     "fonduer_model",
     code_paths=code_paths,
+    preprocessor=doc_preprocessor,
+    parser=corpus_parser,
+    mention_extractor=mention_extractor,
+    candidate_extractor=candidate_extractor,
     featurizer=featurizer,
     disc_model=disc_model,
     word2id=emb_layer.word2id,
@@ -168,6 +172,10 @@ fonduer_model.log_model(
     model,
     "fonduer_model",
     code_paths=code_paths,
+    preprocessor=doc_preprocessor,
+    parser=corpus_parser,
+    mention_extractor=mention_extractor,
+    candidate_extractor=candidate_extractor,
     featurizer=featurizer,
     disc_model=disc_model,
     word2id=emb_layer.word2id,
