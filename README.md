@@ -23,7 +23,10 @@ Contributions to the Fonduer project include
 
 # Development
 
-Let's assume that `fonduer_subclasses.py` and `fonduer_lfs.py` have been already developed, each of which defines mention/candidate subclasses and labeling functions, respectively.
+`fonduer_model.py` defines `FonduerModel` that is a custom MLflow model (see [here](https://www.mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#creating-custom-pyfunc-models) for details) for Fonduer.
+A developer is supposed to create a class, say `MyFonduerModel`, that inherits `FonduerModel` and implements `_classify(self, doc: Document) -> DataFrame`.
+
+Also, a developer is supposed to create `fonduer_subclasses.py` and `fonduer_lfs.py`, each of which defines mention/candidate subclasses and labeling functions, respectively.
 
 # Training
 
@@ -80,11 +83,6 @@ fonduer_model
 This `fonduer_model` folder, conforming to the MLflow Model, is portable and can be deployed anywhere as long as a PostgreSQL server is accesible.
 
 Note that the trained model can also be found under `./mlruns/<experiment-id>/<run-id>/artifacts`.
-
-It is worth noting that `fonduer_model.py` defines `FonduerModel` that is a custom MLflow model (see [here](https://www.mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#creating-custom-pyfunc-models) for details) for Fonduer.
-`FonduerModel` has implemented methods, e.g., `load_context`, and also not-implemented methods, e.g., `_get_mention_extractor`.
-Implemented methods are implemented as they are, the author believes, common to any Fonduer-based application.
-Since different applications would have a different parser, different mention/candidate extractors, etc., not-implemented methods are left not-implemented so that a developer can create a class, say `MyFonduerModel`, that inherits `FonduerModel` and overrides/implements them for their application.
 
 # Serving
 
