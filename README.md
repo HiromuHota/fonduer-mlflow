@@ -71,16 +71,15 @@ A trained Fonduer model will be saved at `./fonduer_model` with the following co
 (fonduer-mlflow) $ tree fonduer_model
 fonduer_model
 ├── MLmodel
-├── best_model.pt
 ├── code
 │   ├── fonduer_model.py
-│   ├── fonduerconfig.py
+│   ├── fonduer_subclasses.py
 │   └── my_fonduer_model.py
-├── feature_keys.pkl
-└── fonduer_model.pkl
+├── disc_model.pkl  (pickled Emmental model)
+└── model.pkl  (pickled MyFonduerModel)
 ```
 
-This `fonduer_model` folder, conforming to the MLflow Model, is portable and can be deployed anywhere as long as a PostgreSQL server is accesible.
+This `fonduer_model` folder, conforming to the MLflow Model, is portable and can be deployed anywhere.
 
 Note that the trained model can also be found under `./mlruns/<experiment-id>/<run-id>/artifacts`.
 
