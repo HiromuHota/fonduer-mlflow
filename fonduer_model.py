@@ -3,11 +3,13 @@ import logging
 import os
 import pickle
 import sys
+import yaml
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 from mlflow import pyfunc
 from mlflow.models import Model
+from mlflow.utils.environment import _mlflow_conda_env
 from mlflow.utils.file_utils import _copy_file_or_tree
 from mlflow.utils.model_utils import _get_flavor_configuration
 from pandas import DataFrame
@@ -34,6 +36,29 @@ from snorkel.labeling.model import LabelModel
 logger = logging.getLogger(__name__)
 
 MODEL_TYPE = "model_type"
+
+
+def get_default_conda_env():
+    """
+    :return: The default Conda environment for MLflow Models produced by calls to
+             :func:`save_model()` and :func:`log_model()`.
+    """
+    import torch
+    import torchvision
+    import fonduer
+
+    return _mlflow_conda_env(
+        additional_conda_deps=[
+            "pytorch={}".format(torch.__version__),
+            "torchvision={}".format(torchvision.__version__),
+            "psycopg2",
+        ],
+        additional_pip_deps=[
+            "fonduer=={}".format(fonduer.__version__)
+        ],
+        additional_conda_channels=[
+            "pytorch",
+        ])
 
 
 class FonduerModel(pyfunc.PythonModel):
@@ -124,6 +149,7 @@ def log_model(
     parser: Parser,
     mention_extractor: MentionExtractor,
     candidate_extractor: CandidateExtractor,
+    conda_env: Optional[Dict] = None,
     code_paths: Optional[List[str]] = None,
     model_type: Optional[str] = "discriminative",
     labeler: Optional[Labeler] = None,
@@ -140,6 +166,7 @@ def log_model(
         parser=parser,
         mention_extractor=mention_extractor,
         candidate_extractor=candidate_extractor,
+        conda_env=conda_env,
         code_paths=code_paths,
         model_type=model_type,
         labeler=labeler,
@@ -158,6 +185,7 @@ def save_model(
     mention_extractor: MentionExtractor,
     candidate_extractor: CandidateExtractor,
     mlflow_model: Model = Model(),
+    conda_env: Optional[Dict] = None,
     code_paths: Optional[List[str]] = None,
     model_type: Optional[str] = "discriminative",
     labeler: Optional[Labeler] = None,
@@ -212,6 +240,15 @@ def save_model(
 
     pickle.dump(model, open(os.path.join(path, "model.pkl"), "wb"))
 
+    conda_env_subpath = "conda.yaml"
+    if conda_env is None:
+        conda_env = get_default_conda_env()
+    elif not isinstance(conda_env, dict):
+        with open(conda_env, "r") as f:
+            conda_env = yaml.safe_load(f)
+    with open(os.path.join(path, conda_env_subpath), "w") as f:
+        yaml.safe_dump(conda_env, stream=f, default_flow_style=False)
+
     _copy_file_or_tree(src=__file__, dst=model_code_path)
     if code_paths is not None:
         for code_path in code_paths:
@@ -222,6 +259,7 @@ def save_model(
         code=pyfunc.CODE,
         loader_module=__name__,
         model_type=model_type,
+        env=conda_env_subpath,
     )
     mlflow_model.save(os.path.join(path, "MLmodel"))
 
