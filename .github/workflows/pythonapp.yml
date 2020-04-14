@@ -24,9 +24,11 @@ jobs:
         auto-update-conda: true
         python-version: 3.7
     - name: Install dependencies
+      shell: bash -l {0}
       run: |
         pip install mlflow==1.7.2
     - name: Lint with flake8
+      shell: bash -l {0}
       run: |
         pip install flake8
         # stop the build if there are Python syntax errors or undefined names
@@ -34,10 +36,12 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Train a model
+      shell: bash -l {0}
       run: |
         ./download_data.sh
         mlflow run ./ -P conn_string=postgresql://runner:postgres@localhost:5432/pob_presidents
     - name: Use the model for inference without a database
+      shell: bash -l {0}
       run: |
         docker stop $(docker ps --no-trunc -q -f "ancestor=postgres:12")
         echo '{"columns": ["path"], "data": ["data/new/Al_Gore.html"]}' > input.json
