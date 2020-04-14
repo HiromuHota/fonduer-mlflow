@@ -112,6 +112,21 @@ You will get a response like below:
 ]
 ```
 
+# Docker
+
+
+Build a Docker image
+
+```
+$ mlflow models build-docker -m fonduer_model -n fonduer_model
+```
+
+Deploy
+
+```
+$ docker run -p 5000:8080 -v "$(pwd)"/data:/opt/mlflow/data fonduer_model
+```
+
 # Acknowledgement
 
 Most of the initial codes were derived from the wiki tutorial of [fonduer-tutorials](https://github.com/HazyResearch/fonduer-tutorials).
