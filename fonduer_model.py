@@ -52,6 +52,7 @@ def get_default_conda_env():
             "pytorch={}".format(torch.__version__),
             "torchvision={}".format(torchvision.__version__),
             "psycopg2",
+            "pip",
         ],
         additional_pip_deps=[
             "fonduer=={}".format(fonduer.__version__)
