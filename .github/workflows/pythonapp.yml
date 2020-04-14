@@ -26,10 +26,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install torch==1.4.0+cpu -f https://download.pytorch.org/whl/torch_stable.html
         pip install mlflow==1.5.0
-        sudo apt update && sudo apt install -y --no-install-recommends libpq-dev
-        pip install fonduer==0.8.0
     - name: Lint with flake8
       run: |
         pip install flake8
@@ -40,7 +37,7 @@ jobs:
     - name: Train a model
       run: |
         ./download_data.sh
-        mlflow run ./ --no-conda -P conn_string=postgresql://runner:postgres@localhost:5432/pob_presidents
+        mlflow run ./ -P conn_string=postgresql://runner:postgres@localhost:5432/pob_presidents
     - name: Use the model for inference without a database
       run: |
         docker stop $(docker ps --no-trunc -q -f "ancestor=postgres:12")
