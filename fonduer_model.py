@@ -15,7 +15,7 @@ import torch
 
 import emmental
 from emmental.model import EmmentalModel
-from fonduer import Meta, init_logging
+from fonduer import init_logging
 from fonduer.parser import Parser
 from fonduer.parser.parser import ParserUDF
 from fonduer.parser.models import Document

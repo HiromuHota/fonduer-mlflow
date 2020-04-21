@@ -1,14 +1,9 @@
 from typing import Iterable, Set, Tuple
 from pandas import DataFrame
 import numpy as np
-from scipy.sparse import csr_matrix
 
 from emmental.data import EmmentalDataLoader
-from fonduer.parser.parser import ParserUDF
-from fonduer.parser.preprocessors import DocPreprocessor, HTMLDocPreprocessor
 from fonduer.parser.models import Document
-from fonduer.candidates.candidates import CandidateExtractorUDF
-from fonduer.candidates.mentions import MentionExtractorUDF
 from fonduer.candidates.models import Candidate
 from fonduer.learning.dataset import FonduerDataset
 

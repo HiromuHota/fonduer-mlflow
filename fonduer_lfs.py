@@ -1,5 +1,4 @@
-from fonduer.utils.data_model_utils import *
-import re
+from fonduer.utils.data_model_utils import get_ancestor_tag_names
 
 ABSTAIN = -1
 FALSE = 0
