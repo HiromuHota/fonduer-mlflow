@@ -236,7 +236,12 @@ class _FonduerWrapper(object):
 
 
 def F_matrix(features: List[Dict[str, Any]], key_names: List[str]) -> csr_matrix:
-    # Convert features (keys_map) into a sparse matrix
+    """Convert features (the output from FeaturizerUDF.apply) into a sparse matrix.
+
+    Note that FeaturizerUDF.apply returns list of features: List[List[Dict[str, Any]]],
+    where the outer list represents candidate_classes.
+    Meanwhile this method takes features: List[Dict[str, Any]] of each candidate_class.
+    """
     keys_map = {}
     for (i, k) in enumerate(key_names):
         keys_map[k] = i
@@ -258,4 +263,13 @@ def F_matrix(features: List[Dict[str, Any]], key_names: List[str]) -> csr_matrix
 
 
 def L_matrix(labels: List[Dict[str, Any]], key_names: List[str]) -> np.ndarray:
+    """Convert labels (the output from LabelerUDF.apply) into a dense matrix.
+
+    Note that LabelerUDF.apply returns list of labels: List[List[Dict[str, Any]]],
+    where the outer list represents candidate_classes.
+    Meanwhile this method takes labels: List[Dict[str, Any]] of each candidate_class.
+
+    Also note that the input labels are 0-indexed ({0, 1, ..., k}),
+    while the output labels are -1-indexed ({-1, 0, ..., k-1}).
+    """
     return unshift_label_matrix(F_matrix(labels, key_names))
