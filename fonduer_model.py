@@ -4,11 +4,13 @@ import pickle
 import sys
 from typing import Any, Dict, List, Optional
 
+import numpy as np
 from mlflow import pyfunc
 from mlflow.models import Model
 from mlflow.utils.file_utils import _copy_file_or_tree
 from mlflow.utils.model_utils import _get_flavor_configuration
 from pandas import DataFrame
+from scipy.sparse import csr_matrix
 import torch
 
 import emmental
@@ -24,6 +26,7 @@ from fonduer.candidates.mentions import MentionExtractorUDF
 from fonduer.features.feature_extractors import FeatureExtractor
 from fonduer.features.featurizer import Featurizer, FeaturizerUDF
 from fonduer.supervision.labeler import Labeler, LabelerUDF
+from fonduer.utils.utils_udf import unshift_label_matrix
 from snorkel.labeling.model import LabelModel
 
 
@@ -230,3 +233,29 @@ class _FonduerWrapper(object):
     def predict(self, dataframe: DataFrame) -> DataFrame:
         predicted = self.fonduer_model.predict(dataframe)
         return predicted
+
+
+def F_matrix(features: List[Dict[str, Any]], key_names: List[str]) -> csr_matrix:
+    # Convert features (keys_map) into a sparse matrix
+    keys_map = {}
+    for (i, k) in enumerate(key_names):
+        keys_map[k] = i
+
+    indptr = [0]
+    indices = []
+    data = []
+    for feature in features:
+        for cand_key, cand_value in zip(feature["keys"], feature["values"]):
+            if cand_key in key_names:
+                indices.append(keys_map[cand_key])
+                data.append(cand_value)
+        indptr.append(len(indices))
+    F = csr_matrix(
+        (data, indices, indptr),
+        shape=(len(features), len(key_names))
+        )
+    return F
+
+
+def L_matrix(labels: List[Dict[str, Any]], key_names: List[str]) -> np.ndarray:
+    return unshift_label_matrix(F_matrix(labels, key_names))

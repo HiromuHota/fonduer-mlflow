@@ -1,4 +1,3 @@
-import itertools
 from typing import Iterable, Set, Tuple
 from pandas import DataFrame
 import numpy as np
@@ -13,7 +12,7 @@ from fonduer.candidates.mentions import MentionExtractorUDF
 from fonduer.candidates.models import Candidate
 from fonduer.learning.dataset import FonduerDataset
 
-from fonduer_model import FonduerModel
+from fonduer_model import FonduerModel, F_matrix
 from fonduer_subclasses import mention_classes, candidate_classes
 
 
@@ -42,23 +41,9 @@ class MyFonduerModel(FonduerModel):
 
         # Featurization
         features_list = self.featurizer.apply(doc)
-        features = itertools.chain.from_iterable(features_list)
 
         # Convert features into a sparse matrix
-        keys_map = {}
-        for (i, k) in enumerate(self.key_names):
-            keys_map[k] = i
-
-        indptr = [0]
-        indices = []
-        data = []
-        for feature in features:
-            for cand_key, cand_value in zip(feature["keys"], feature["values"]):
-                if cand_key in self.key_names:
-                    indices.append(keys_map[cand_key])
-                    data.append(cand_value)
-            indptr.append(len(indices))
-        F_test = csr_matrix((data, indices, indptr), shape=(len(test_cands), len(self.key_names)))
+        F_test = F_matrix(features_list[0], self.key_names)
 
         # Dataloader for test
         ATTRIBUTE = "wiki"
