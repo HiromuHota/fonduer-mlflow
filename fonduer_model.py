@@ -165,7 +165,10 @@ def save_model(
 
     :param fonduer_model: the model to be saved.
     :param path: the path on the local file system.
-    :param conn_string: the connection string.
+    :param preprocessor: the doc preprocessor.
+    :param parser: self-explanatory
+    :param mention_extractor: self-explanatory
+    :param candidate_extractor: self-explanatory
     :param mlflow_model: model configuration.
     :param code_paths: A list of local filesystem paths to Python file dependencies (or directories containing file dependencies). These files are prepended to the system path when the model is loaded.
     :param model_type: the model type, either "discriminative" or "generative", defaults to "discriminative".
