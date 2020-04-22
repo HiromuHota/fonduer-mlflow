@@ -60,7 +60,7 @@ class FonduerModel(pyfunc.PythonModel):
         doc = next(self.preprocessor._parse_file(path, os.path.basename(path)))
 
         logger.info(f"Parsing {path}")
-        doc = self.corpus_parser.apply(doc, pdf_path=path)
+        doc = self.parser.apply(doc, pdf_path=path)
 
         logger.info(f"Extracting mentions from {path}")
         doc = self.mention_extractor.apply(doc)
@@ -80,7 +80,7 @@ def _load_pyfunc(model_path: str):
     model = pickle.load(open(os.path.join(model_path, "model.pkl"), "rb"))
     fonduer_model = model["fonduer_model"]
     fonduer_model.preprocessor = model["preprosessor"]
-    fonduer_model.corpus_parser = ParserUDF(**model["parser"])
+    fonduer_model.parser = ParserUDF(**model["parser"])
     fonduer_model.mention_extractor = MentionExtractorUDF(**model["mention_extractor"])
     fonduer_model.candidate_extractor = CandidateExtractorUDF(**model["candidate_extractor"])
 
