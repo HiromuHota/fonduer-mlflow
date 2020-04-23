@@ -44,13 +44,11 @@ def get_default_conda_env():
              :func:`save_model()` and :func:`log_model()`.
     """
     import torch
-    import torchvision
     import fonduer
 
     return _mlflow_conda_env(
         additional_conda_deps=[
             "pytorch={}".format(torch.__version__),
-            "torchvision",
             "psycopg2",
             "pip",
         ],
