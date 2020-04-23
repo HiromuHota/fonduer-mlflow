@@ -39,6 +39,7 @@ jobs:
       shell: bash -l {0}
       run: |
         ./download_data.sh
+        docker build -t mlflow-docker-example .
         mlflow run ./ -P conn_string=postgresql://runner:postgres@localhost:5432/pob_presidents
     - name: Use the model for inference without a database
       shell: bash -l {0}
