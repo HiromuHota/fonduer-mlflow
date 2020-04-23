@@ -112,7 +112,7 @@ def _load_pyfunc(model_path: str):
         fonduer_model.gen_models = []
         for state_dict in model["gen_models_state_dict"]:
             gen_model = LabelModel()
-            gen_model.load_state_dict(state_dict)
+            gen_model.__dict__.update(state_dict)
             fonduer_model.gen_models.append(gen_model)
     return _FonduerWrapper(fonduer_model)
 
@@ -208,7 +208,7 @@ def save_model(
     else:
         key_names = [key.name for key in labeler.get_keys()]
         model["labeler_keys"] = key_names
-        model["gen_models_state_dict"] = [gen_model.state_dict() for gen_model in gen_models]
+        model["gen_models_state_dict"] = [gen_model.__dict__ for gen_model in gen_models]
 
     pickle.dump(model, open(os.path.join(path, "model.pkl"), "wb"))
 
