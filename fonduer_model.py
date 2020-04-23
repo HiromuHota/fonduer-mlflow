@@ -4,7 +4,7 @@ import os
 import pickle
 import sys
 import yaml
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 from mlflow import pyfunc
@@ -135,6 +135,8 @@ def _load_pyfunc(model_path: str):
         fonduer_model.labeler = LabelerUDF(candidate_classes)
         fonduer_model.key_names = model["labeler_keys"]
 
+        fonduer_model.lfs = model["lfs"]
+
         fonduer_model.gen_models = []
         for state_dict in model["gen_models_state_dict"]:
             gen_model = LabelModel()
@@ -154,6 +156,7 @@ def log_model(
     code_paths: Optional[List[str]] = None,
     model_type: Optional[str] = "discriminative",
     labeler: Optional[Labeler] = None,
+    lfs: Optional[List[List[Callable]]] = None,
     gen_models: Optional[List[LabelModel]] = None,
     featurizer: Optional[Featurizer] = None,
     disc_model: Optional[EmmentalModel] = None,
@@ -171,6 +174,7 @@ def log_model(
         code_paths=code_paths,
         model_type=model_type,
         labeler=labeler,
+        lfs=lfs,
         gen_models=gen_models,
         featurizer=featurizer,
         disc_model=disc_model,
@@ -190,6 +194,7 @@ def save_model(
     code_paths: Optional[List[str]] = None,
     model_type: Optional[str] = "discriminative",
     labeler: Optional[Labeler] = None,
+    lfs: Optional[List[List[Callable]]] = None,
     gen_models: Optional[List[LabelModel]] = None,
     featurizer: Optional[Featurizer] = None,
     disc_model: Optional[EmmentalModel] = None,
@@ -207,6 +212,7 @@ def save_model(
     :param code_paths: A list of local filesystem paths to Python file dependencies (or directories containing file dependencies). These files are prepended to the system path when the model is loaded.
     :param model_type: the model type, either "discriminative" or "generative", defaults to "discriminative".
     :param labeler: a labeler, defaults to None.
+    :param lfs: a list of list of labeling functions.
     :param gen_models: a list of generative models, defaults to None.
     :param featurizer: a featurizer, defaults to None.
     :param disc_model: a discriminative model, defaults to None.
@@ -237,6 +243,7 @@ def save_model(
     else:
         key_names = [key.name for key in labeler.get_keys()]
         model["labeler_keys"] = key_names
+        model["lfs"] = lfs
         model["gen_models_state_dict"] = [gen_model.__dict__ for gen_model in gen_models]
 
     pickle.dump(model, open(os.path.join(path, "model.pkl"), "wb"))

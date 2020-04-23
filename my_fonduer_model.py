@@ -7,7 +7,7 @@ from fonduer.parser.models import Document
 from fonduer.candidates.models import Candidate
 from fonduer.learning.dataset import FonduerDataset
 
-from fonduer_model import FonduerModel, F_matrix
+from fonduer_model import FonduerModel, F_matrix, L_matrix
 from fonduer_subclasses import mention_classes, candidate_classes
 
 
@@ -66,18 +66,18 @@ class MyFonduerModel(FonduerModel):
                     )
                 )
         else:
-            labels_list = self.labeler.apply(test_cands, lfs=self.labeler.lfs)
-            L_test = L_test(labels_list[0], self.key_names)
+            labels_list = self.labeler.apply(doc, lfs=self.lfs)
+            L_test = L_matrix(labels_list[0], self.key_names)
 
-            marginals = self.gen_model[0].predict_proba(L_test)
+            marginals = self.gen_models[0].predict_proba(L_test)
             for cand, prob in zip(test_cands, marginals[:,1]):
                 cand.prob = prob
             sorted_cands = sorted(test_cands, key=lambda cand: cand.prob, reverse=True)
 
-            entity_relation = get_unique_entity_relations(sorted_cands[0])
-            df = df.append(
-                DataFrame([entity_relation],
-                columns=[m.__name__ for m in candidate_class.mentions]
+            for entity_relation in get_unique_entity_relations(sorted_cands):
+                df = df.append(
+                    DataFrame([entity_relation],
+                    columns=[m.__name__ for m in candidate_class.mentions]
+                    )
                 )
-            )
         return df

@@ -151,6 +151,7 @@ from my_fonduer_model import MyFonduerModel
 model = MyFonduerModel()
 code_paths = [
     "fonduer_subclasses.py",
+    "fonduer_lfs.py",
     "my_fonduer_model.py",
 ]
 
@@ -194,5 +195,6 @@ fonduer_model.save_model(
     candidate_extractor=candidate_extractor,
     model_type="generative",
     labeler=labeler,
+    lfs=[president_name_pob_lfs],
     gen_models=[gen_model],
 )
