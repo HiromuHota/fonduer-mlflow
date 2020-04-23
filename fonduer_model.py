@@ -50,7 +50,7 @@ def get_default_conda_env():
     return _mlflow_conda_env(
         additional_conda_deps=[
             "pytorch={}".format(torch.__version__),
-            "torchvision={}".format(torchvision.__version__),
+            "torchvision",
             "psycopg2",
             "pip",
         ],
