@@ -151,13 +151,16 @@ from my_fonduer_model import MyFonduerModel
 model = MyFonduerModel()
 code_paths = [
     "fonduer_subclasses.py",
+    "fonduer_lfs.py",
     "my_fonduer_model.py",
 ]
 
 import fonduer_model
+
+# Discrinative model
 fonduer_model.save_model(
     model,
-    "fonduer_model",
+    "fonduer_disc_model",
     code_paths=code_paths,
     preprocessor=doc_preprocessor,
     parser=corpus_parser,
@@ -170,7 +173,7 @@ fonduer_model.save_model(
 
 fonduer_model.log_model(
     model,
-    "fonduer_model",
+    "fonduer_disc_model",
     code_paths=code_paths,
     preprocessor=doc_preprocessor,
     parser=corpus_parser,
@@ -179,4 +182,19 @@ fonduer_model.log_model(
     featurizer=featurizer,
     disc_model=disc_model,
     word2id=emb_layer.word2id,
+)
+
+# Generative model
+fonduer_model.save_model(
+    model,
+    "fonduer_gen_model",
+    code_paths=code_paths,
+    preprocessor=doc_preprocessor,
+    parser=corpus_parser,
+    mention_extractor=mention_extractor,
+    candidate_extractor=candidate_extractor,
+    model_type="generative",
+    labeler=labeler,
+    lfs=[president_name_pob_lfs],
+    gen_models=[gen_model],
 )
