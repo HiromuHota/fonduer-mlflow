@@ -21,6 +21,12 @@ Contributions to the Fonduer project include
 - Defined a Fonduer model: what it includes, which parts are common/different for different apps.
 - Created a custom MLflow model for Fonduer, which can be used to package a trained Fonduer model, deploy it, and let it serve.
 
+# Prerequisites
+
+- MLflow
+- Anaconda or Miniconda
+- Docker (optional)
+
 # Development
 
 `fonduer_model.py` defines `FonduerModel` that is a custom MLflow model (see [here](https://www.mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#creating-custom-pyfunc-models) for details) for Fonduer.
@@ -68,8 +74,8 @@ fonduer_model
 │   ├── fonduer_model.py
 │   ├── fonduer_subclasses.py
 │   └── my_fonduer_model.py
-├── disc_model.pkl  (pickled Emmental model)
-└── model.pkl  (pickled MyFonduerModel)
+├── conda.yaml
+└── model.pkl
 ```
 
 This `fonduer_model` folder, conforming to the MLflow Model, is portable and can be deployed anywhere.
@@ -112,7 +118,7 @@ You will get a response like below:
 ]
 ```
 
-# Docker (Experimental)
+# Docker (experimental)
 
 
 Build a Docker image
