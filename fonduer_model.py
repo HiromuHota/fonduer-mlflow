@@ -48,7 +48,7 @@ def get_default_conda_env():
 
     return _mlflow_conda_env(
         additional_conda_deps=[
-            "pytorch={}".format(torch.__version__),
+            "pytorch={}".format(torch.__version__.split("+")[0]),  # split out "+cpu" for portability
             "psycopg2",
             "pip",
         ],
