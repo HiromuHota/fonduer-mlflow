@@ -1,3 +1,4 @@
+from io import BytesIO
 import logging
 import os
 import pickle
@@ -99,7 +100,11 @@ def _load_pyfunc(model_path: str):
         fonduer_model.key_names = model["feature_keys"]
         fonduer_model.word2id = model["word2id"]
 
-        fonduer_model.disc_model = torch.load(os.path.join(model_path, "disc_model.pkl"))
+        # Load the disc_model
+        buffer = BytesIO()
+        buffer.write(model["disc_model"])
+        buffer.seek(0)
+        fonduer_model.disc_model = torch.load(buffer)
     else:
         fonduer_model.labeler = LabelerUDF(candidate_classes)
         fonduer_model.key_names = model["labeler_keys"]
@@ -195,7 +200,11 @@ def save_model(
         model["feature_keys"] = key_names
         model["word2id"] = word2id
 
-        torch.save(disc_model, os.path.join(path, "disc_model.pkl"))
+        # Save the disc_model
+        buffer = BytesIO()
+        torch.save(disc_model, buffer)
+        buffer.seek(0)
+        model["disc_model"] = buffer.read()
     else:
         key_names = [key.name for key in labeler.get_keys()]
         model["labeler_keys"] = key_names
