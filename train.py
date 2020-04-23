@@ -198,3 +198,17 @@ fonduer_model.save_model(
     lfs=[president_name_pob_lfs],
     gen_models=[gen_model],
 )
+
+fonduer_model.log_model(
+    model,
+    "fonduer_gen_model",
+    code_paths=code_paths,
+    preprocessor=doc_preprocessor,
+    parser=corpus_parser,
+    mention_extractor=mention_extractor,
+    candidate_extractor=candidate_extractor,
+    model_type="generative",
+    labeler=labeler,
+    lfs=[president_name_pob_lfs],
+    gen_models=[gen_model],
+)
