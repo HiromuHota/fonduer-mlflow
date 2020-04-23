@@ -21,6 +21,12 @@ Contributions to the Fonduer project include
 - Defined a Fonduer model: what it includes, which parts are common/different for different apps.
 - Created a custom MLflow model for Fonduer, which can be used to package a trained Fonduer model, deploy it, and let it serve.
 
+# Prerequisites
+
+- MLflow
+- Anaconda or Miniconda
+- Docker (optional)
+
 # Development
 
 `fonduer_model.py` defines `FonduerModel` that is a custom MLflow model (see [here](https://www.mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#creating-custom-pyfunc-models) for details) for Fonduer.
@@ -50,17 +56,10 @@ Create a database.
 $ docker exec postgres createdb -U `whoami` pob_presidents
 ```
 
-Create a conda environment and activate it.
-
-```
-$ conda env create -f conda.yaml
-$ conda activate fonduer-mlflow
-```
-
 ## Train a model
 
 ```
-(fonduer-mlflow) $ mlflow run ./ --no-conda -P conn_string=postgresql://localhost:5432/pob_presidents
+$ mlflow run ./ -P conn_string=postgresql://localhost:5432/pob_presidents
 ```
 
 ## Check the trained model
@@ -68,15 +67,15 @@ $ conda activate fonduer-mlflow
 A trained Fonduer model will be saved at `./fonduer_model` with the following contents.
 
 ```bash
-(fonduer-mlflow) $ tree fonduer_model
+$ tree fonduer_model
 fonduer_model
 ├── MLmodel
 ├── code
 │   ├── fonduer_model.py
 │   ├── fonduer_subclasses.py
 │   └── my_fonduer_model.py
-├── disc_model.pkl  (pickled Emmental model)
-└── model.pkl  (pickled MyFonduerModel)
+├── conda.yaml
+└── model.pkl
 ```
 
 This `fonduer_model` folder, conforming to the MLflow Model, is portable and can be deployed anywhere.
@@ -91,13 +90,13 @@ Let me show you one of the ways.
 ## Deploys the model as a local REST API server
 
 ```
-(fonduer-mlflow) $ mlflow models serve -m fonduer_model -w 1
+$ mlflow models serve -m fonduer_model -w 1
 ```
 
 or alternatively,
 
 ```
-(fonduer-mlflow) $ mlflow models serve -m runs:/<run-id>/fonduer_model -w 1
+$ mlflow models serve -m runs:/<run-id>/fonduer_model -w 1
 ```
 
 If you send the following request to the API endpoint (`http://127.0.0.1:5000/invocations` in this case)
@@ -117,6 +116,21 @@ You will get a response like below:
         "Placeofbirth": "Washington"
     }
 ]
+```
+
+# Docker (experimental)
+
+
+Build a Docker image
+
+```
+$ mlflow models build-docker -m fonduer_model -n fonduer_model
+```
+
+Deploy
+
+```
+$ docker run -p 5000:8080 -v "$(pwd)"/data:/opt/mlflow/data fonduer_model
 ```
 
 # Acknowledgement

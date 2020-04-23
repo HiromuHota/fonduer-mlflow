@@ -10,5 +10,5 @@ dependencies:
   - cpuonly
   - pip
   - pip:
-    - mlflow==1.5.0
-    - fonduer==0.8.0
+    - mlflow==1.8.0
+    - fonduer==0.8.1
