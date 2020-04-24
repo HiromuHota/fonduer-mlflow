@@ -109,9 +109,6 @@ def _load_pyfunc(model_path: str):
     fonduer_model.mention_extractor = MentionExtractorUDF(**model["mention_extractor"])
     fonduer_model.candidate_extractor = CandidateExtractorUDF(**model["candidate_extractor"])
 
-    # Configure logging for Fonduer
-    init_logging(log_dir="logs")
-
     pyfunc_conf = _get_flavor_configuration(
         model_path=model_path, flavor_name=pyfunc.FLAVOR_NAME
     )

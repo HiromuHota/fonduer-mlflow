@@ -14,7 +14,7 @@ print(conn_string)
 from fonduer import Meta, init_logging
 
 # Configure logging for Fonduer
-init_logging(log_dir="logs")
+# init_logging(log_dir="logs")
 
 session = Meta.init(conn_string).Session()
 
@@ -158,6 +158,7 @@ code_paths = [
 import fonduer_model
 
 # Discrinative model
+"""
 fonduer_model.save_model(
     model,
     "fonduer_disc_model",
@@ -170,6 +171,7 @@ fonduer_model.save_model(
     disc_model=disc_model,
     word2id=emb_layer.word2id,
 )
+"""
 
 fonduer_model.log_model(
     model,
@@ -185,6 +187,7 @@ fonduer_model.log_model(
 )
 
 # Generative model
+"""
 fonduer_model.save_model(
     model,
     "fonduer_gen_model",
@@ -198,6 +201,7 @@ fonduer_model.save_model(
     lfs=[president_name_pob_lfs],
     gen_models=[gen_model],
 )
+"""
 
 fonduer_model.log_model(
     model,
