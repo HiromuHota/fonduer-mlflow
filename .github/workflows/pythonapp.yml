@@ -26,7 +26,7 @@ jobs:
     - name: Install dependencies
       shell: bash -l {0}
       run: |
-        pip install mlflow==1.8.0
+        pip install mlflow>=1.1.0
     - name: Lint with flake8
       shell: bash -l {0}
       run: |

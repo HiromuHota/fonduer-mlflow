@@ -23,7 +23,7 @@ Contributions to the Fonduer project include
 
 # Prerequisites
 
-- MLflow
+- MLflow (v1.1.0 or higher)
 - Anaconda or Miniconda
 - Docker (optional)
 
@@ -120,6 +120,7 @@ You will get a response like below:
 
 # Docker (experimental)
 
+MLflow should be v1.8.0 or higher (mlflow/mlflow#2691, mlflow/mlflow#2699).
 
 Build a Docker image
 
