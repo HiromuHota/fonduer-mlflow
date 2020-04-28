@@ -103,7 +103,7 @@ If you send the following request to the API endpoint (`http://127.0.0.1:5000/in
 
 ```
 $ curl -X POST -H "Content-Type:application/json; format=pandas-split" \
-  --data '{"columns":["path"], "data":["data/new/Al_Gore.html"]}' \
+  --data '{"columns":["html_path"], "data":["data/new/Al_Gore.html"]}' \
   http://127.0.0.1:5000/invocations
 ```
 
