@@ -1,12 +1,15 @@
-from io import BytesIO
 import logging
 import os
 import pickle
 import sys
-import yaml
+from io import BytesIO
 from typing import Any, Callable, Dict, List, Optional
 
+import emmental
 import numpy as np
+import torch
+import yaml
+from emmental.model import EmmentalModel
 from mlflow import pyfunc
 from mlflow.models import Model
 from mlflow.utils.environment import _mlflow_conda_env
@@ -14,31 +17,27 @@ from mlflow.utils.file_utils import _copy_file_or_tree
 from mlflow.utils.model_utils import _get_flavor_configuration
 from pandas import DataFrame
 from scipy.sparse import csr_matrix
-import torch
+from snorkel.labeling.model import LabelModel
 
-import emmental
-from emmental.model import EmmentalModel
 from fonduer import init_logging
-from fonduer.parser import Parser
-from fonduer.parser.parser import ParserUDF
-from fonduer.parser.models import Document
-from fonduer.parser.preprocessors import DocPreprocessor
 from fonduer.candidates import CandidateExtractor, MentionExtractor
 from fonduer.candidates.candidates import CandidateExtractorUDF
 from fonduer.candidates.mentions import MentionExtractorUDF
 from fonduer.features.feature_extractors import FeatureExtractor
 from fonduer.features.featurizer import Featurizer, FeaturizerUDF
+from fonduer.parser import Parser
+from fonduer.parser.models import Document
+from fonduer.parser.parser import ParserUDF
+from fonduer.parser.preprocessors import DocPreprocessor
 from fonduer.supervision.labeler import Labeler, LabelerUDF
 from fonduer.utils.utils_udf import unshift_label_matrix
-from snorkel.labeling.model import LabelModel
-
 
 logger = logging.getLogger(__name__)
 
 MODEL_TYPE = "model_type"
 
 
-def get_default_conda_env():
+def get_default_conda_env() -> Optional[Dict[str, Any]]:
     """
     :return: The default Conda environment for MLflow Models produced by calls to
              :func:`save_model()` and :func:`log_model()`.
@@ -48,22 +47,20 @@ def get_default_conda_env():
 
     return _mlflow_conda_env(
         additional_conda_deps=[
-            "pytorch={}".format(torch.__version__),
+            "pytorch={}".format(torch.__version__),  # type: ignore
             "psycopg2",
             "pip",
         ],
-        additional_pip_deps=[
-            "fonduer=={}".format(fonduer.__version__)
-        ],
-        additional_conda_channels=[
-            "pytorch",
-        ])
+        additional_pip_deps=["fonduer=={}".format(fonduer.__version__)],
+        additional_conda_channels=["pytorch"],
+    )
 
 
 class FonduerModel(pyfunc.PythonModel):
     """
     A custom MLflow model for Fonduer.
     """
+
     def _classify(self, doc: Document) -> DataFrame:
         raise NotImplementedError()
 
@@ -74,8 +71,7 @@ class FonduerModel(pyfunc.PythonModel):
         return df
 
     def _process(self, path: str) -> DataFrame:
-        """
-        Takes a file/directory path and returns values extracted from the file or files in that directory.
+        """Run the whole pipeline of Fonduer.
 
         :param path: a file/directory path.
         """
@@ -98,7 +94,7 @@ class FonduerModel(pyfunc.PythonModel):
         return df
 
 
-def _load_pyfunc(model_path: str):
+def _load_pyfunc(model_path: str) -> Any:
     """
     Load PyFunc implementation. Called by ``pyfunc.load_pyfunc``.
     """
@@ -107,7 +103,9 @@ def _load_pyfunc(model_path: str):
     fonduer_model.preprocessor = model["preprosessor"]
     fonduer_model.parser = ParserUDF(**model["parser"])
     fonduer_model.mention_extractor = MentionExtractorUDF(**model["mention_extractor"])
-    fonduer_model.candidate_extractor = CandidateExtractorUDF(**model["candidate_extractor"])
+    fonduer_model.candidate_extractor = CandidateExtractorUDF(
+        **model["candidate_extractor"]
+    )
 
     # Configure logging for Fonduer
     init_logging(log_dir="logs")
@@ -207,8 +205,11 @@ def save_model(
     :param mention_extractor: self-explanatory
     :param candidate_extractor: self-explanatory
     :param mlflow_model: model configuration.
-    :param code_paths: A list of local filesystem paths to Python file dependencies (or directories containing file dependencies). These files are prepended to the system path when the model is loaded.
-    :param model_type: the model type, either "discriminative" or "generative", defaults to "discriminative".
+    :param code_paths: A list of local filesystem paths to Python file dependencies,
+        or directories containing file dependencies. These files are prepended to the
+        system path when the model is loaded.
+    :param model_type: the model type, either "discriminative" or "generative",
+        defaults to "discriminative".
     :param labeler: a labeler, defaults to None.
     :param lfs: a list of list of labeling functions.
     :param gen_models: a list of generative models, defaults to None.
@@ -220,7 +221,8 @@ def save_model(
     model_code_path = os.path.join(path, pyfunc.CODE)
     os.makedirs(model_code_path)
 
-    # Note that ParserUDF, MentionExtractorUDF, CandidateExtractorUDF themselves are not picklable.
+    # Note that instances of ParserUDF and other UDF theselves are not picklable.
+    # https://stackoverflow.com/a/52026025
     model = {
         "fonduer_model": fonduer_model,
         "preprosessor": preprocessor,
@@ -242,7 +244,9 @@ def save_model(
         key_names = [key.name for key in labeler.get_keys()]
         model["labeler_keys"] = key_names
         model["lfs"] = lfs
-        model["gen_models_state_dict"] = [gen_model.__dict__ for gen_model in gen_models]
+        model["gen_models_state_dict"] = [
+            gen_model.__dict__ for gen_model in gen_models
+        ]
 
     pickle.dump(model, open(os.path.join(path, "model.pkl"), "wb"))
 
@@ -276,9 +280,7 @@ class _FonduerWrapper(object):
     predict(data: pd.DataFrame) -> model's output as pd.DataFrame (pandas DataFrame)
     """
 
-    def __init__(
-        self, fonduer_model: FonduerModel
-    ) -> None:
+    def __init__(self, fonduer_model: FonduerModel) -> None:
         """
         :param python_model: An instance of a subclass of :class:`~PythonModel`.
         """
@@ -309,10 +311,7 @@ def F_matrix(features: List[Dict[str, Any]], key_names: List[str]) -> csr_matrix
                 indices.append(keys_map[cand_key])
                 data.append(cand_value)
         indptr.append(len(indices))
-    F = csr_matrix(
-        (data, indices, indptr),
-        shape=(len(features), len(key_names))
-        )
+    F = csr_matrix((data, indices, indptr), shape=(len(features), len(key_names)))
     return F
 
 
