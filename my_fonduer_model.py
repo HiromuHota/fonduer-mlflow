@@ -36,7 +36,7 @@ class MyFonduerModel(FonduerModel):
         candidate_class = self.candidate_extractor.candidate_classes[0]
         test_cands = getattr(doc, candidate_class.__tablename__ + "s")
 
-        if self.model_type == "discriminative":
+        if self.model_type == "emmental":
             # Featurization
             features_list = self.featurizer.apply(doc)
 
@@ -55,7 +55,7 @@ class MyFonduerModel(FonduerModel):
                 shuffle=False,
             )
 
-            test_preds = self.disc_model.predict(test_dataloader, return_preds=True)
+            test_preds = self.emmental_model.predict(test_dataloader, return_preds=True)
             positive = np.where(np.array(test_preds["probs"][ATTRIBUTE])[:, TRUE] > 0.6)
             true_preds = [test_cands[_] for _ in positive[0]]
 
@@ -69,7 +69,7 @@ class MyFonduerModel(FonduerModel):
             labels_list = self.labeler.apply(doc, lfs=self.lfs)
             L_test = L_matrix(labels_list[0], self.key_names)
 
-            marginals = self.gen_models[0].predict_proba(L_test)
+            marginals = self.label_models[0].predict_proba(L_test)
             for cand, prob in zip(test_cands, marginals[:,1]):
                 cand.prob = prob
             sorted_cands = sorted(test_cands, key=lambda cand: cand.prob, reverse=True)

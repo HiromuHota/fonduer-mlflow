@@ -85,10 +85,10 @@ L_gold_train = labeler.get_gold_labels(train_cands, annotator="gold")
 
 from snorkel.labeling.model import LabelModel
 
-gen_model = LabelModel(verbose=False)
-gen_model.fit(L_train[0], n_epochs=500)
+label_model = LabelModel(verbose=False)
+label_model.fit(L_train[0], n_epochs=500)
 
-train_marginals = gen_model.predict_proba(L_train[0])
+train_marginals = label_model.predict_proba(L_train[0])
 
 ATTRIBUTE = "wiki"
 
@@ -139,13 +139,13 @@ tasks = create_task(
     ATTRIBUTE, 2, F_train[0].shape[1], 2, emb_layer, model="LogisticRegression"
 )
 
-disc_model = EmmentalModel()
+emmental_model = EmmentalModel()
 
 for task in tasks:
-    disc_model.add_task(task)
+    emmental_model.add_task(task)
 
 emmental_learner = EmmentalLearner()
-emmental_learner.learn(disc_model, [train_dataloader])
+emmental_learner.learn(emmental_model, [train_dataloader])
 
 from my_fonduer_model import MyFonduerModel
 model = MyFonduerModel()
@@ -160,55 +160,55 @@ import fonduer_model
 # Discrinative model
 fonduer_model.save_model(
     model,
-    "fonduer_disc_model",
+    "fonduer_emmental_model",
     code_paths=code_paths,
     preprocessor=doc_preprocessor,
     parser=corpus_parser,
     mention_extractor=mention_extractor,
     candidate_extractor=candidate_extractor,
     featurizer=featurizer,
-    disc_model=disc_model,
+    emmental_model=emmental_model,
     word2id=emb_layer.word2id,
 )
 
 fonduer_model.log_model(
     model,
-    "fonduer_disc_model",
+    "fonduer_emmental_model",
     code_paths=code_paths,
     preprocessor=doc_preprocessor,
     parser=corpus_parser,
     mention_extractor=mention_extractor,
     candidate_extractor=candidate_extractor,
     featurizer=featurizer,
-    disc_model=disc_model,
+    emmental_model=emmental_model,
     word2id=emb_layer.word2id,
 )
 
 # Generative model
 fonduer_model.save_model(
     model,
-    "fonduer_gen_model",
+    "fonduer_label_model",
     code_paths=code_paths,
     preprocessor=doc_preprocessor,
     parser=corpus_parser,
     mention_extractor=mention_extractor,
     candidate_extractor=candidate_extractor,
-    model_type="generative",
+    model_type="label",
     labeler=labeler,
     lfs=[president_name_pob_lfs],
-    gen_models=[gen_model],
+    label_models=[label_model],
 )
 
 fonduer_model.log_model(
     model,
-    "fonduer_gen_model",
+    "fonduer_label_model",
     code_paths=code_paths,
     preprocessor=doc_preprocessor,
     parser=corpus_parser,
     mention_extractor=mention_extractor,
     candidate_extractor=candidate_extractor,
-    model_type="generative",
+    model_type="label",
     labeler=labeler,
     lfs=[president_name_pob_lfs],
-    gen_models=[gen_model],
+    label_models=[label_model],
 )

@@ -45,5 +45,5 @@ jobs:
       run: |
         docker stop $(docker ps --no-trunc -q -f "ancestor=postgres:12")
         echo '{"columns": ["html_path"], "data": ["data/new/Al_Gore.html"]}' > input.json
-        mlflow models predict -m fonduer_disc_model -t json -i input.json
-        mlflow models predict -m fonduer_gen_model -t json -i input.json
+        mlflow models predict -m fonduer_emmental_model -t json -i input.json
+        mlflow models predict -m fonduer_label_model -t json -i input.json
