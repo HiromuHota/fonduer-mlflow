@@ -8,7 +8,6 @@ from fonduer.candidates.models import Candidate
 from fonduer.learning.dataset import FonduerDataset
 
 from fonduer_model import FonduerModel, F_matrix, L_matrix
-from fonduer_subclasses import mention_classes, candidate_classes
 
 
 def get_entity_relation(candidate: Candidate) -> Tuple:
@@ -29,6 +28,9 @@ TRUE = 1
 
 
 class MyFonduerModel(FonduerModel):
+    def _load_subclasses(self):
+        import fonduer_subclasses
+
     def _classify(self, doc: Document) -> DataFrame:
         df = DataFrame()
 

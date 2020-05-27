@@ -84,6 +84,9 @@ class FonduerModel(pyfunc.PythonModel):
         )
 
     """
+    def _load_subclasses(self):
+        """Load subclasses of both mention and candidate."""
+        raise NotImplementedError()
 
     def _classify(self, doc: Document) -> DataFrame:
         """Classify candidates by an Emmental model (or by a label model)."""
@@ -149,6 +152,9 @@ def _load_pyfunc(model_path: str) -> Any:
     fonduer_model.candidate_extractor = CandidateExtractorUDF(
         **model["candidate_extractor"]
     )
+
+    # Load subclasses
+    fonduer_model._load_subclasses()
 
     # Configure logging for Fonduer
     init_logging(log_dir="logs")
