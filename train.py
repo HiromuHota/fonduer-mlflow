@@ -152,6 +152,7 @@ model = MyFonduerModel()
 code_paths = [
     "fonduer_subclasses.py",
     "fonduer_lfs.py",
+    "fonduer_model.py",  # will no longer needed once HazyResearch/fonduer#407 is merged.
     "my_fonduer_model.py",
 ]
 
