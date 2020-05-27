@@ -144,6 +144,10 @@ class FonduerModel(pyfunc.PythonModel):
 
 def _load_pyfunc(model_path: str) -> Any:
     """Load PyFunc implementation. Called by ``pyfunc.load_pyfunc``."""
+    # Load subclasses (this has to be called before unpickling pickles)
+    fonduer_model._load_subclasses()
+
+    # Load a model
     model = pickle.load(open(os.path.join(model_path, "model.pkl"), "rb"))
     fonduer_model = model["fonduer_model"]
     fonduer_model.preprocessor = model["preprosessor"]
@@ -152,9 +156,6 @@ def _load_pyfunc(model_path: str) -> Any:
     fonduer_model.candidate_extractor = CandidateExtractorUDF(
         **model["candidate_extractor"]
     )
-
-    # Load subclasses
-    fonduer_model._load_subclasses()
 
     # Configure logging for Fonduer
     init_logging(log_dir="logs")
