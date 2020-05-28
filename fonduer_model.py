@@ -287,8 +287,8 @@ def save_model(
         key_names = [key.name for key in labeler.get_keys()]
         model["labeler_keys"] = key_names
 
-        # hack alert: https://github.com/cloudpipe/cloudpickle/issues/206#issuecomment-555939172
-        # This makes lfs unpicklable w/o the module (ie fonduer_lfs.py)
+        # Makes lfs unpicklable w/o the module (ie fonduer_lfs.py)
+        # https://github.com/cloudpipe/cloudpickle/issues/206#issuecomment-555939172
         for _ in lfs:
             for lf in _:
                 modules.append(lf.__module__)
