@@ -8,6 +8,7 @@ dependencies:
   - pytorch
   - cpuonly
   - pip
+  - cloudpickle
   - pip:
     - mlflow>=1.1.0
     - fonduer==0.8.1
