@@ -1,10 +1,10 @@
 import logging
 import os
-import cloudpickle as pickle
 import sys
 from io import BytesIO
 from typing import Any, Callable, Dict, List, Optional
 
+import cloudpickle as pickle
 import emmental
 import numpy as np
 import torch
@@ -295,6 +295,7 @@ def save_model(
         "mention_extractor": mention_extractor.udf_init_kwargs,
         "candidate_extractor": candidate_extractor.udf_init_kwargs,
     }
+    modules = []
     if model_type == "emmental":
         key_names = [key.name for key in featurizer.get_keys()]
         model["feature_keys"] = key_names
@@ -308,10 +309,12 @@ def save_model(
     else:
         key_names = [key.name for key in labeler.get_keys()]
         model["labeler_keys"] = key_names
+
         # hack alert: https://github.com/cloudpipe/cloudpickle/issues/206#issuecomment-555939172
         # This makes lfs unpicklable w/o the module (ie fonduer_lfs.py)
-        for list_of_lf in lfs:
-            for lf in list_of_lf:
+        for _ in lfs:
+            for lf in _:
+                modules.append(lf.__module__)
                 lf.__module__ = "__main__"
 
         model["lfs"] = lfs
@@ -320,6 +323,12 @@ def save_model(
         ]
 
     pickle.dump(model, open(os.path.join(path, "model.pkl"), "wb"))
+
+    # Restore __module__ back to the original
+    if model_type == "label":
+        for _ in lfs:
+            for lf in _:
+                lf.__module__ = modules.pop()
 
     conda_env_subpath = "conda.yaml"
     if conda_env is None:
