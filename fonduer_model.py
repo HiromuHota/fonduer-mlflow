@@ -1,6 +1,6 @@
 import logging
 import os
-import pickle
+import cloudpickle as pickle
 import sys
 from io import BytesIO
 from typing import Any, Callable, Dict, List, Optional
@@ -308,6 +308,12 @@ def save_model(
     else:
         key_names = [key.name for key in labeler.get_keys()]
         model["labeler_keys"] = key_names
+        # hack alert: https://github.com/cloudpipe/cloudpickle/issues/206#issuecomment-555939172
+        # This makes lfs unpicklable w/o the module (ie fonduer_lfs.py)
+        for list_of_lf in lfs:
+            for lf in list_of_lf:
+                lf.__module__ = "__main__"
+
         model["lfs"] = lfs
         model["label_models_state_dict"] = [
             label_model.__dict__ for label_model in label_models
