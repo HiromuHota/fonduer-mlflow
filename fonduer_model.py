@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 from io import BytesIO
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import cloudpickle as pickle
 import emmental
@@ -181,7 +181,7 @@ def log_model(
     parser: Parser,
     mention_extractor: MentionExtractor,
     candidate_extractor: CandidateExtractor,
-    conda_env: Optional[Dict] = None,
+    conda_env: Optional[Union[Dict, str]] = None,
     code_paths: Optional[List[str]] = None,
     model_type: Optional[str] = "emmental",
     labeler: Optional[Labeler] = None,
@@ -199,7 +199,8 @@ def log_model(
     :param parser: self-explanatory
     :param mention_extractor: self-explanatory
     :param candidate_extractor: self-explanatory
-    :param conda_env: A dictionary representation of a Conda environment.
+    :param conda_env: Either a dictionary representation of a Conda environment
+        or the path to a Conda environment yaml file.
     :param code_paths: A list of local filesystem paths to Python file dependencies,
         or directories containing file dependencies. These files are prepended to the
         system path when the model is loaded.
@@ -240,7 +241,7 @@ def save_model(
     mention_extractor: MentionExtractor,
     candidate_extractor: CandidateExtractor,
     mlflow_model: Model = Model(),
-    conda_env: Optional[Dict] = None,
+    conda_env: Optional[Union[Dict, str]] = None,
     code_paths: Optional[List[str]] = None,
     model_type: Optional[str] = "emmental",
     labeler: Optional[Labeler] = None,
@@ -259,7 +260,8 @@ def save_model(
     :param mention_extractor: self-explanatory
     :param candidate_extractor: self-explanatory
     :param mlflow_model: model configuration.
-    :param conda_env: A dictionary representation of a Conda environment.
+    :param conda_env: Either a dictionary representation of a Conda environment
+        or the path to a Conda environment yaml file.
     :param code_paths: A list of local filesystem paths to Python file dependencies,
         or directories containing file dependencies. These files are prepended to the
         system path when the model is loaded.
@@ -276,10 +278,10 @@ def save_model(
     model_code_path = os.path.join(path, pyfunc.CODE)
     os.makedirs(model_code_path)
 
-    # mention_classes
+    # Save mention_classes
     _save_mention_classes(mention_extractor.udf_init_kwargs["mention_classes"], path)
 
-    # candidate_classes
+    # Save candidate_classes
     _save_candidate_classes(
         candidate_extractor.udf_init_kwargs["candidate_classes"], path
     )
@@ -328,6 +330,7 @@ def save_model(
             for lf in _:
                 lf.__module__ = modules.pop()
 
+    # Create a conda yaml file.
     conda_env_subpath = "conda.yaml"
     if conda_env is None:
         conda_env = _get_default_conda_env()
@@ -337,6 +340,7 @@ def save_model(
     with open(os.path.join(path, conda_env_subpath), "w") as f:
         yaml.safe_dump(conda_env, stream=f, default_flow_style=False)
 
+    # Copy code_paths.
     if code_paths is not None:
         for code_path in code_paths:
             _copy_file_or_tree(src=code_path, dst=model_code_path)
@@ -368,7 +372,7 @@ class _FonduerWrapper(object):
         return predicted
 
 
-def _save_mention_classes(mention_classes: List[Mention], path: str):
+def _save_mention_classes(mention_classes: List[Mention], path: str) -> None:
     pickle.dump(
         [
             {
@@ -383,12 +387,12 @@ def _save_mention_classes(mention_classes: List[Mention], path: str):
     )
 
 
-def _load_mention_classes(path: str):
+def _load_mention_classes(path: str) -> None:
     for kwargs in pickle.load(open(os.path.join(path, "mention_classes.pkl"), "rb")):
         mention_subclass(**kwargs)
 
 
-def _save_candidate_classes(candidate_classes: List[Candidate], path: str):
+def _save_candidate_classes(candidate_classes: List[Candidate], path: str) -> None:
     pickle.dump(
         [
             {
@@ -407,7 +411,7 @@ def _save_candidate_classes(candidate_classes: List[Candidate], path: str):
     )
 
 
-def _load_candidate_classes(path: str):
+def _load_candidate_classes(path: str) -> None:
     for kwargs in pickle.load(open(os.path.join(path, "candidate_classes.pkl"), "rb")):
         # Convert the classnames of mention to mention_classes
         kwargs["args"] = [
@@ -417,7 +421,7 @@ def _load_candidate_classes(path: str):
         candidate_subclass(**kwargs)
 
 
-def F_matrix(features: List[Dict[str, Any]], key_names: List[str]) -> csr_matrix:
+def _F_matrix(features: List[Dict[str, Any]], key_names: List[str]) -> csr_matrix:
     """Convert features (the output from FeaturizerUDF.apply) into a sparse matrix.
 
     Note that :func:`FeaturizerUDF.apply` returns a list of list of feature mapping,
@@ -444,7 +448,7 @@ def F_matrix(features: List[Dict[str, Any]], key_names: List[str]) -> csr_matrix
     return F
 
 
-def L_matrix(labels: List[Dict[str, Any]], key_names: List[str]) -> np.ndarray:
+def _L_matrix(labels: List[Dict[str, Any]], key_names: List[str]) -> np.ndarray:
     """Convert labels (the output from LabelerUDF.apply) into a dense matrix.
 
     Note that :func:`LabelerUDF.apply` returns a list of list of label mapping,
@@ -457,4 +461,4 @@ def L_matrix(labels: List[Dict[str, Any]], key_names: List[str]) -> np.ndarray:
     :param labels: a list of label mapping (key: key_name, value=label).
     :param key_names: a list of all key_names.
     """
-    return unshift_label_matrix(F_matrix(labels, key_names))
+    return unshift_label_matrix(_F_matrix(labels, key_names))
