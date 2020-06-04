@@ -7,7 +7,7 @@ from fonduer.parser.models import Document
 from fonduer.candidates.models import Candidate
 from fonduer.learning.dataset import FonduerDataset
 
-from fonduer_model import FonduerModel, _F_matrix, _L_matrix
+from fonduer.packaging import FonduerModel
 
 
 def get_entity_relation(candidate: Candidate) -> Tuple:
@@ -38,7 +38,7 @@ class MyFonduerModel(FonduerModel):
             features_list = self.featurizer.apply(doc)
 
             # Convert features into a sparse matrix
-            F_test = _F_matrix(features_list[0], self.key_names)
+            F_test = FonduerModel.convert_features_to_matrix(features_list[0], self.key_names)
 
             # Dataloader for test
             ATTRIBUTE = "wiki"
@@ -57,7 +57,7 @@ class MyFonduerModel(FonduerModel):
             true_preds = [test_cands[_] for _ in positive[0]]
         else:
             labels_list = self.labeler.apply(doc, lfs=self.lfs)
-            L_test = _L_matrix(labels_list[0], self.key_names)
+            L_test = FonduerModel.convert_labels_to_matrix(labels_list[0], self.key_names)
 
             marginals = self.label_models[0].predict_proba(L_test)
             for cand, prob in zip(test_cands, marginals[:,1]):

@@ -23,10 +23,10 @@ jobs:
       with:
         auto-update-conda: true
         python-version: 3.7
-    - name: Install dependencies
+    - name: Install Fonduer 0.8.3+dev
       shell: bash -l {0}
       run: |
-        pip install mlflow>=1.1.0
+        pip install git+https://github.com/HazyResearch/fonduer.git
     - name: Lint with flake8
       shell: bash -l {0}
       run: |

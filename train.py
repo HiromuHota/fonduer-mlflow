@@ -151,14 +151,13 @@ from my_fonduer_model import MyFonduerModel
 model = MyFonduerModel()
 code_paths = [
     "fonduer_subclasses.py",
-    "fonduer_model.py",  # will no longer needed once HazyResearch/fonduer#407 is merged.
     "my_fonduer_model.py",
 ]
 
-import fonduer_model
+from fonduer.packaging import save_model, log_model
 
 # Discrinative model
-fonduer_model.save_model(
+save_model(
     model,
     "fonduer_emmental_model",
     code_paths=code_paths,
@@ -171,7 +170,7 @@ fonduer_model.save_model(
     word2id=emb_layer.word2id,
 )
 
-fonduer_model.log_model(
+log_model(
     model,
     "fonduer_emmental_model",
     code_paths=code_paths,
@@ -185,7 +184,7 @@ fonduer_model.log_model(
 )
 
 # Generative model
-fonduer_model.save_model(
+save_model(
     model,
     "fonduer_label_model",
     code_paths=code_paths,
@@ -199,7 +198,7 @@ fonduer_model.save_model(
     label_models=[label_model],
 )
 
-fonduer_model.log_model(
+log_model(
     model,
     "fonduer_label_model",
     code_paths=code_paths,
